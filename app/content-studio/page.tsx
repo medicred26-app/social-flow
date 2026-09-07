@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { ContentItem, MediaItem } from '@/types';
 import { saveStoredLibraryItems, getStoredLibraryItems } from '@/lib/store';
+import { aiPost, getBackendUrl } from '@/lib/ai';
 
 export default function ContentStudioPage() {
   const router = useRouter();
@@ -56,40 +57,73 @@ export default function ContentStudioPage() {
   // Notification state
   const [notif, setNotif] = useState<string | null>(null);
 
-  const handleGenerateAIVideo = () => {
+  const resolveMediaUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('/')) return `${getBackendUrl()}${url}`;
+    return url;
+  };
+
+  const handleGenerateAIVideo = async () => {
     if (!prompt.trim()) return;
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const data = await aiPost('/video/generate', {
+        prompt,
+        aspectRatio,
+        durationSeconds: 8,
+      });
+      if (data.videoUrl) setVideoUrl(resolveMediaUrl(data.videoUrl));
+      if (data.thumbnailUrl) setThumbnailUrl(resolveMediaUrl(data.thumbnailUrl));
+      if (data.caption) setCaptionText(data.caption);
+      if (data.hook) setHookText(data.hook);
+      if (data.cta) setCTAText(data.cta);
+      if (Array.isArray(data.hashtags)) setHashtags(data.hashtags);
+      setNotif(data.message || '✨ Gemini generated your video package.');
+    } catch (err: any) {
+      setNotif(err.message || 'Video generation failed.');
+    } finally {
       setIsGenerating(false);
-      setVideoUrl('https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&auto=format&fit=crop&q=80');
-      setNotif('✨ AI Video generated successfully in 9:16 vertical Reels format!');
-      setTimeout(() => setNotif(null), 3000);
-    }, 2000);
+      setTimeout(() => setNotif(null), 5000);
+    }
   };
 
-  const handleGenerateCaptions = () => {
+  const handleGenerateCaptions = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const data = await aiPost('/captions/generate', {
+        topic: prompt || mediaTitle,
+        platform: 'instagram',
+        tone: 'engaging',
+      });
+      if (data.caption) setCaptionText(data.caption);
+      if (data.hook) setHookText(data.hook);
+      if (data.cta) setCTAText(data.cta);
+      if (Array.isArray(data.hashtags)) setHashtags(data.hashtags);
+      setNotif('✨ Gemini wrote a caption, hook, CTA, and hashtags.');
+    } catch (err: any) {
+      setNotif(err.message || 'Caption generation failed.');
+    } finally {
       setIsGenerating(false);
-      setCaptionText(
-        '🔥 The secret to scaling 5 social media accounts simultaneously without burnout? AI + Human Hybrid Workflows. Save this post for your weekly strategy!'
-      );
-      setHookText('What if you could publish to 5 social channels in 1 click?');
-      setCTAText('Link in bio for full breakdown!');
-      setHashtags(['#SocialFlow', '#GrowthHacking', '#ContentMarketing2026', '#SaaS']);
-      setNotif('✨ Generated AI Caption, Viral Hook & Trending Hashtags!');
-      setTimeout(() => setNotif(null), 3000);
-    }, 1500);
+      setTimeout(() => setNotif(null), 4000);
+    }
   };
 
-  const handleGenerateThumbnail = () => {
+  const handleGenerateThumbnail = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const data = await aiPost('/thumbnail/generate', {
+        title: mediaTitle,
+        prompt,
+        aspectRatio,
+      });
+      if (data.thumbnailUrl) setThumbnailUrl(resolveMediaUrl(data.thumbnailUrl));
+      setNotif('✨ Gemini generated a thumbnail.');
+    } catch (err: any) {
+      setNotif(err.message || 'Thumbnail generation failed.');
+    } finally {
       setIsGenerating(false);
-      setThumbnailUrl('https://images.unsplash.com/photo-1600132806370-bf17e65e942f?w=400&auto=format&fit=crop&q=80');
-      setNotif('✨ AI Thumbnail generated with high-contrast text overlay & background isolation!');
-      setTimeout(() => setNotif(null), 3000);
-    }, 1500);
+      setTimeout(() => setNotif(null), 4000);
+    }
   };
 
   const handleSaveToLibrary = () => {
@@ -464,11 +498,29 @@ export default function ContentStudioPage() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    setNotif('✨ Created 5 platform-specific versions! Ready for multi-channel publishing.');
-                    setTimeout(() => setNotif(null), 3000);
+                  onClick={async () => {
+                    setIsGenerating(true);
+                    try {
+                      const data = await aiPost('/repurpose', {
+                        sourceContent: `${hookText}\n\n${captionText}\n\n${ctaText}\n\n${prompt}`,
+                      });
+                      const versions = Array.isArray(data.versions) ? data.versions : [];
+                      const first = versions.find((v: { caption?: string }) => v.caption);
+                      if (first?.caption) setCaptionText(first.caption);
+                      setNotif(
+                        versions.length
+                          ? `✨ Gemini created ${versions.length} platform versions. Send to Publisher to post.`
+                          : '✨ Gemini repurposed your content.'
+                      );
+                    } catch (err: any) {
+                      setNotif(err.message || 'Repurpose failed.');
+                    } finally {
+                      setIsGenerating(false);
+                      setTimeout(() => setNotif(null), 4000);
+                    }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                  disabled={isGenerating}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span>Repurpose for All Platforms</span>
