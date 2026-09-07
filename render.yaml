@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: socialflow-web
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npx next start -H 0.0.0.0 -p $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        fromService:
+          name: socialflow-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://socialflow-api.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://socialflow-api.onrender.com/api
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://kettuzklxorjkydoqcqr.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldHR1emtseG9yamt5ZG9xY3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODQ2MjEsImV4cCI6MjA3Njg2MDYyMX0.cnZri4VB7njerX8lZ6H8tlWcItEC9fn1qcaCkTiZS58
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        value: 282450834667-746f0noc03gfpsqg5sc5edji9eoutilu.apps.googleusercontent.com
