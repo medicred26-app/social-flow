@@ -7,14 +7,16 @@ export class FacebookAdapter implements PlatformAdapter {
   async connect(params?: any) {
     // Calls independent Facebook backend OAuth endpoint
     if (typeof window !== 'undefined') {
-      window.location.href = 'http://localhost:5000/api/platforms/facebook/oauth';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      window.location.href = `${backendUrl}/api/platforms/facebook/oauth`;
     }
     return { success: true };
   }
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch('http://localhost:5000/api/platforms/facebook/publish', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/facebook/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -25,11 +27,9 @@ export class FacebookAdapter implements PlatformAdapter {
       }
       return { success: false, error: data.error || 'Failed to publish to Facebook' };
     } catch (err: any) {
-      // Fallback local publishing mock for offline/dev preview
-      await new Promise(r => setTimeout(r, 600));
       return {
-        success: true,
-        platformPostId: `fb_post_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+        success: false,
+        error: err.message || 'Failed to connect to SocialFlow backend for Facebook publishing.'
       };
     }
   }

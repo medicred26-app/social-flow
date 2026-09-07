@@ -23,18 +23,33 @@ import { useAuth } from '@/lib/auth-context';
 export function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [apiConnected, setApiConnected] = useState<boolean>(true);
   const { theme, toggleTheme } = useTheme();
-  const { user, logout, googleClientId } = useAuth();
+  const { user, logout } = useAuth();
+
+  React.useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+        const res = await fetch(`${backendUrl}/api/health`);
+        setApiConnected(res.ok);
+      } catch (e) {
+        setApiConnected(false);
+      }
+    };
+    checkBackend();
+    const interval = setInterval(checkBackend, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <header className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 transition-colors duration-200">
+    <header className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30 transition-colors duration-200" suppressHydrationWarning>
       {/* Search & Team Switcher */}
       <div className="flex items-center gap-4">
-        {/* Workspace Dropdown */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/50 rounded-xl text-xs text-slate-800 dark:text-slate-200 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+        {/* Workspace Badge */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/50 rounded-xl text-xs text-slate-800 dark:text-slate-200">
           <Building2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span className="font-semibold">TechPulse Workspace</span>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+          <span className="font-semibold">SocialFlow Workspace</span>
         </div>
 
         {/* Global Search */}
@@ -42,7 +57,7 @@ export function Navbar() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search scheduled posts, tags..."
+            placeholder="Search scheduled posts, accounts..."
             className="w-full bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-4 py-1.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all"
           />
         </div>
@@ -50,13 +65,17 @@ export function Navbar() {
 
       {/* Action Buttons & Status */}
       <div className="flex items-center gap-3">
-        {/* Backend & OAuth Status Indicator */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full text-[11px] font-medium">
+        {/* Backend Status Indicator */}
+        <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${
+          apiConnected 
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+        }`}>
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${apiConnected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${apiConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
           </span>
-          <span>Backend API Connected</span>
+          <span>{apiConnected ? 'Backend API Connected' : 'Local Standalone Mode'}</span>
         </div>
 
         {/* Theme Toggle */}

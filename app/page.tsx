@@ -555,6 +555,7 @@ export default function PublicLandingPage() {
           <div className="flex items-center gap-6">
             <a href="#about" className="hover:underline">About</a>
             <a href="#features" className="hover:underline">Features</a>
+            <Link href="/privacy-policy" className="hover:underline text-indigo-600 dark:text-indigo-400 font-semibold">Privacy Policy</Link>
             <a href="#help" className="hover:underline">Help & FAQ</a>
             <a href="#contact" className="hover:underline">Contact</a>
             {user ? (

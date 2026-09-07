@@ -4,12 +4,15 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { triggerGoogleSignInPopup, signInWithFirebaseGoogle } from './google-auth';
 
+export type UserRole = 'customer' | 'freelancer';
+
 export interface User {
   id: string;
   email: string;
   name: string;
   avatar?: string;
   provider?: 'email' | 'google';
+  role: UserRole;
 }
 
 interface AuthContextType {
@@ -18,8 +21,8 @@ interface AuthContextType {
   isLoading: boolean;
   googleClientId: string;
   setGoogleClientId: (id: string) => void;
-  login: (email: string, pass: string) => Promise<{ success: boolean; message?: string }>;
-  signup: (email: string, pass: string, name?: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, pass: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
+  signup: (email: string, pass: string, name?: string, role?: UserRole) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: (customClientId?: string) => Promise<void>;
   logout: () => void;
 }
@@ -42,9 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Restore session and stored Google Client ID
     const storedToken = localStorage.getItem('sf_auth_token');
     const storedUser = localStorage.getItem('sf_auth_user');
+    const storedTimestamp = localStorage.getItem('sf_auth_timestamp');
     const storedClientId = localStorage.getItem('sf_google_client_id') || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
-    if (storedToken && storedUser) {
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const isExpired = storedTimestamp && (Date.now() - parseInt(storedTimestamp, 10) > TWENTY_FOUR_HOURS);
+
+    if (storedToken && storedUser && !isExpired) {
       try {
         setUser(JSON.parse(storedUser));
         setToken(storedToken);
@@ -54,7 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
       }
     } else {
-      // Unauthenticated visitor
+      // Unauthenticated or session expired after 24 hours
+      localStorage.removeItem('sf_auth_token');
+      localStorage.removeItem('sf_auth_user');
+      localStorage.removeItem('sf_auth_timestamp');
       setUser(null);
       setToken(null);
     }
@@ -71,8 +81,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('sf_google_client_id', id);
   };
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string, role?: UserRole) => {
     setIsLoading(true);
+    // Determine role: use provided, or restore from existing stored user, or default to 'customer'
+    const storedPrevUser = localStorage.getItem('sf_auth_user');
+    let resolvedRole: UserRole = role || 'customer';
+    if (!role && storedPrevUser) {
+      try { resolvedRole = JSON.parse(storedPrevUser).role || 'customer'; } catch (_) {}
+    }
     try {
       // Attempt backend API login
       const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
@@ -83,10 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setUser(data.user);
+        const userWithRole = { ...data.user, role: data.user.role || resolvedRole };
+        setUser(userWithRole);
         setToken(data.token);
         localStorage.setItem('sf_auth_token', data.token);
-        localStorage.setItem('sf_auth_user', JSON.stringify(data.user));
+        localStorage.setItem('sf_auth_user', JSON.stringify(userWithRole));
+        localStorage.setItem('sf_auth_timestamp', Date.now().toString());
         localStorage.removeItem('sf_explicit_logout');
         setIsLoading(false);
         return { success: true };
@@ -101,33 +119,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         name: email.split('@')[0],
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-        provider: 'email'
+        provider: 'email',
+        role: resolvedRole
       };
       setUser(fallbackUser);
       setToken(`token_${Date.now()}`);
       localStorage.setItem('sf_auth_token', `token_${Date.now()}`);
       localStorage.setItem('sf_auth_user', JSON.stringify(fallbackUser));
+      localStorage.setItem('sf_auth_timestamp', Date.now().toString());
       localStorage.removeItem('sf_explicit_logout');
       setIsLoading(false);
       return { success: true };
     }
   };
 
-  const signup = async (email: string, pass: string, name?: string) => {
+  const signup = async (email: string, pass: string, name?: string, role?: UserRole) => {
     setIsLoading(true);
+    const resolvedRole: UserRole = role || 'customer';
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass, name }),
+        body: JSON.stringify({ email, password: pass, name, role: resolvedRole }),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setUser(data.user);
+        const userWithRole = { ...data.user, role: data.user.role || resolvedRole };
+        setUser(userWithRole);
         setToken(data.token);
         localStorage.setItem('sf_auth_token', data.token);
-        localStorage.setItem('sf_auth_user', JSON.stringify(data.user));
+        localStorage.setItem('sf_auth_user', JSON.stringify(userWithRole));
+        localStorage.setItem('sf_auth_timestamp', Date.now().toString());
         localStorage.removeItem('sf_explicit_logout');
         setIsLoading(false);
         return { success: true };
@@ -141,12 +164,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         name: name || email.split('@')[0],
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-        provider: 'email'
+        provider: 'email',
+        role: resolvedRole
       };
       setUser(fallbackUser);
       setToken(`token_${Date.now()}`);
       localStorage.setItem('sf_auth_token', `token_${Date.now()}`);
       localStorage.setItem('sf_auth_user', JSON.stringify(fallbackUser));
+      localStorage.setItem('sf_auth_timestamp', Date.now().toString());
       localStorage.removeItem('sf_explicit_logout');
       setIsLoading(false);
       return { success: true };
@@ -172,11 +197,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         
         if (data.user) {
-          setUser(data.user);
+          const gUser = { ...data.user, role: data.user.role || 'customer' };
+          setUser(gUser);
           setToken(data.token);
           localStorage.setItem('sf_auth_token', data.token);
-          localStorage.setItem('sf_auth_user', JSON.stringify(data.user));
-          router.push('/dashboard');
+          localStorage.setItem('sf_auth_user', JSON.stringify(gUser));
+          localStorage.setItem('sf_auth_timestamp', Date.now().toString());
+          router.push(gUser.role === 'freelancer' ? '/freelancer' : '/dashboard');
           return;
         }
       } catch (e) {
@@ -184,19 +211,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Local Session Save if API offline
+      // Restore role from previously stored user or default to customer
+      let googleRole: UserRole = 'customer';
+      const prevStored = localStorage.getItem('sf_auth_user');
+      if (prevStored) { try { googleRole = JSON.parse(prevStored).role || 'customer'; } catch (_) {} }
       const authenticatedUser: User = {
         id: googleUser.id,
         email: googleUser.email,
         name: googleUser.name,
         avatar: googleUser.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(googleUser.email)}`,
-        provider: 'google'
+        provider: 'google',
+        role: googleRole
       };
       const authToken = `sf_google_${Date.now()}`;
       setUser(authenticatedUser);
       setToken(authToken);
       localStorage.setItem('sf_auth_token', authToken);
       localStorage.setItem('sf_auth_user', JSON.stringify(authenticatedUser));
-      router.push('/dashboard');
+      localStorage.setItem('sf_auth_timestamp', Date.now().toString());
+      router.push(authenticatedUser.role === 'freelancer' ? '/freelancer' : '/dashboard');
     } catch (err: any) {
       console.error('Google Sign-In failed:', err?.message || err);
       // Don't silently swallow — surface to user via alert if it's not a simple cancel
@@ -213,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     localStorage.removeItem('sf_auth_token');
     localStorage.removeItem('sf_auth_user');
+    localStorage.removeItem('sf_auth_timestamp');
     localStorage.setItem('sf_explicit_logout', 'true');
     router.push('/login');
   };

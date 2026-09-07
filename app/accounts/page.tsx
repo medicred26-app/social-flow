@@ -60,7 +60,7 @@ export default function AccountsPage() {
               connected: true,
               connectedAt: new Date().toISOString(),
               followerCount: followers || 23100,
-              avatarUrl: avatar || acc.avatarUrl
+              avatarUrl: avatar || acc.avatarUrl || 'https://images.unsplash.com/photo-1611262588024-d12430b98920?w=150&auto=format&fit=crop&q=80'
             };
           }
           return acc;
@@ -102,7 +102,7 @@ export default function AccountsPage() {
               connected: true,
               connectedAt: new Date().toISOString(),
               followerCount: followers,
-              avatarUrl: avatar || acc.avatarUrl
+              avatarUrl: avatar || acc.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80'
             };
           }
           return acc;
@@ -144,7 +144,7 @@ export default function AccountsPage() {
               connected: true,
               connectedAt: new Date().toISOString(),
               followerCount: followers,
-              avatarUrl: avatar || acc.avatarUrl
+              avatarUrl: avatar || acc.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80'
             };
           }
           return acc;
@@ -189,7 +189,7 @@ export default function AccountsPage() {
             connected: false,
             handle: '',
             name: `${acc.platform.toUpperCase()} Account`,
-            avatarUrl: '',
+            avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
             followerCount: 0
           };
         }

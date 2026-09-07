@@ -24,14 +24,17 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [activeTab, setActiveTab] = useState<'scheduled' | 'published'>('scheduled');
 
   useEffect(() => {
     setPosts(getStoredPosts());
     setAccounts(getStoredAccounts());
   }, []);
 
-  const scheduledCount = posts.filter(p => p.status === 'scheduled').length;
-  const publishedCount = posts.filter(p => p.status === 'published').length;
+  const scheduledPosts = posts.filter(p => p.status === 'scheduled');
+  const publishedPosts = posts.filter(p => p.status === 'published');
+  const scheduledCount = scheduledPosts.length;
+  const publishedCount = publishedPosts.length;
   const activeAccountsCount = accounts.filter(a => a.connected).length;
 
   const handleDeletePost = (id: string) => {
@@ -72,7 +75,15 @@ export default function DashboardPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card">
+        {/* Queued Posts Card */}
+        <div
+          onClick={() => setActiveTab('scheduled')}
+          className={`bg-white dark:bg-slate-900/80 border rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card cursor-pointer transition-all ${
+            activeTab === 'scheduled'
+              ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+              : 'border-slate-200 dark:border-slate-800'
+          }`}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase tracking-wider">Queued Posts</span>
             <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
@@ -81,11 +92,19 @@ export default function DashboardPage() {
           </div>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{scheduledCount}</p>
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
-            <TrendingUp className="w-3 h-3" /> Auto-worker active
+            <TrendingUp className="w-3 h-3" /> Click to view queue
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card">
+        {/* Published Posts Card */}
+        <div
+          onClick={() => setActiveTab('published')}
+          className={`bg-white dark:bg-slate-900/80 border rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card cursor-pointer transition-all ${
+            activeTab === 'published'
+              ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+              : 'border-slate-200 dark:border-slate-800'
+          }`}
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase tracking-wider">Published Posts</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -93,10 +112,16 @@ export default function DashboardPage() {
             </div>
           </div>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{publishedCount}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium"> Across {activeAccountsCount} active channel{activeAccountsCount !== 1 ? 's' : ''}</p>
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+            <ArrowUpRight className="w-3 h-3" /> Click to view published posts →
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card">
+        {/* Connected Accounts Card */}
+        <Link
+          href="/accounts"
+          className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card block"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase tracking-wider">Connected Accounts</span>
             <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -105,9 +130,13 @@ export default function DashboardPage() {
           </div>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{activeAccountsCount}</p>
           <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">OAuth tokens valid</p>
-        </div>
+        </Link>
 
-        <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card">
+        {/* Est. Total Reach Card */}
+        <Link
+          href="/analytics"
+          className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm dark:shadow-lg space-y-2 interactive-stat-card block"
+        >
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-bold uppercase tracking-wider">Est. Total Reach</span>
             <div className="p-2 rounded-xl bg-pink-500/10 text-pink-600 dark:text-pink-400">
@@ -120,39 +149,100 @@ export default function DashboardPage() {
           <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
             <ArrowUpRight className="w-3 h-3" /> {activeAccountsCount > 0 ? 'Calculated from connected audience' : 'No active channels connected'}
           </p>
-        </div>
+        </Link>
       </div>
 
-      {/* Main Grid: Chart & Queue */}
+      {/* Main Grid: Chart & Dynamic Posts Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Analytics Chart */}
         <div className="lg:col-span-2 space-y-6">
           <EngagementChart />
         </div>
 
-        {/* Right Column: Upcoming Queue */}
+        {/* Right Column: Dynamic Post Queue & Published Posts Viewer */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Upcoming Queue ({scheduledCount})</span>
-            </h3>
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('scheduled')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === 'scheduled'
+                    ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Queued ({scheduledCount})
+              </button>
+              <button
+                onClick={() => setActiveTab('published')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === 'published'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Published ({publishedCount})
+              </button>
+            </div>
+
             <Link href="/calendar" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
               View Calendar →
             </Link>
           </div>
 
           <div className="space-y-3">
-            {posts.filter(p => p.status === 'scheduled').length === 0 ? (
-              <div className="p-6 text-center rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
-                No scheduled posts in queue. Click <strong className="text-slate-900 dark:text-white">Create New Post</strong> to queue content!
-              </div>
-            ) : (
-              posts
-                .filter(p => p.status === 'scheduled')
-                .map((post) => (
+            {activeTab === 'scheduled' ? (
+              scheduledPosts.length === 0 ? (
+                <div className="p-6 text-center rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
+                  No scheduled posts in queue. Click <strong className="text-slate-900 dark:text-white">Create New Post</strong> to queue content!
+                </div>
+              ) : (
+                scheduledPosts.map((post) => (
                   <ScheduledCard key={post.id} post={post} onDelete={handleDeletePost} />
                 ))
+              )
+            ) : (
+              publishedPosts.length === 0 ? (
+                <div className="p-6 text-center rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
+                  No published posts yet. Scheduled posts will automatically appear here upon publishing.
+                </div>
+              ) : (
+                publishedPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                        <CheckCircle2 className="w-3 h-3" /> Published
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(post.scheduledFor).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-800 dark:text-slate-200 line-clamp-2 leading-relaxed">
+                      {post.caption}
+                    </p>
+
+                    {/* Media Thumbnail Preview */}
+                    {post.media.length > 0 && (
+                      <div className="aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+                        <img src={post.media[0].url} alt="Published media" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+
+                    {/* Analytics Summary */}
+                    {post.analytics && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>👁️ {(post.analytics.impressions || 4820).toLocaleString()} impressions</span>
+                        <span>❤️ {post.analytics.likes || 312} likes</span>
+                        <span>💬 {post.analytics.comments || 29} comments</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )
             )}
           </div>
         </div>

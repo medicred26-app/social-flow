@@ -14,7 +14,8 @@ export class YouTubeAdapter implements PlatformAdapter {
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch('http://localhost:5000/api/platforms/youtube/publish', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/youtube/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -25,10 +26,9 @@ export class YouTubeAdapter implements PlatformAdapter {
       }
       return { success: false, error: data.error || 'Failed to upload to YouTube' };
     } catch (err: any) {
-      await new Promise(r => setTimeout(r, 800));
       return {
-        success: true,
-        platformPostId: `yt_video_${Date.now()}`
+        success: false,
+        error: err.message || 'Failed to connect to SocialFlow backend for YouTube publishing.'
       };
     }
   }

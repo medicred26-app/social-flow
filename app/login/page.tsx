@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { GoogleRoleModal } from '@/components/auth/GoogleRoleModal';
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false);
 
   // Forgot password modal state
   const [showResetModal, setShowResetModal] = useState(false);
@@ -36,15 +38,31 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (res.success) {
-      router.push('/dashboard');
+      const storedUser = localStorage.getItem('sf_auth_user');
+      const role = storedUser ? JSON.parse(storedUser).role : 'customer';
+      if (role === 'freelancer') {
+        router.push('/freelancer');
+      } else {
+        router.push('/dashboard');
+      }
     } else {
       setErrorMessage(res.message || 'Invalid credentials. Please try again.');
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setErrorMessage('');
-    await loginWithGoogle();
+    setShowGoogleRoleModal(true);
+  };
+
+  const handleDemoSignIn = async (targetRole: 'customer' | 'freelancer') => {
+    setIsLoading(true);
+    const demoEmail = targetRole === 'freelancer' ? 'freelancer@socialflow.app' : 'demo@socialflow.app';
+    const res = await login(demoEmail, 'demo123', targetRole);
+    setIsLoading(false);
+    if (res.success) {
+      router.push(targetRole === 'freelancer' ? '/freelancer' : '/dashboard');
+    }
   };
 
   const handleResetSubmit = (e: React.FormEvent) => {
@@ -144,6 +162,26 @@ export default function LoginPage() {
               <span>{errorMessage}</span>
             </div>
           )}
+
+          {/* Quick Demo Access Buttons */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => handleDemoSignIn('customer')}
+              className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-xl py-2.5 px-3 text-xs font-bold shadow-md transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Customer Demo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemoSignIn('freelancer')}
+              className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl py-2.5 px-3 text-xs font-bold shadow-md transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Freelancer Demo</span>
+            </button>
+          </div>
 
           {/* Google Sign-In Button */}
           <div>
@@ -332,6 +370,11 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+
+      <GoogleRoleModal
+        isOpen={showGoogleRoleModal}
+        onClose={() => setShowGoogleRoleModal(false)}
+      />
     </div>
   );
 }

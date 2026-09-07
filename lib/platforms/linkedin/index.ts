@@ -14,7 +14,8 @@ export class LinkedInAdapter implements PlatformAdapter {
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch('http://localhost:5000/api/platforms/linkedin/publish', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/linkedin/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -25,10 +26,9 @@ export class LinkedInAdapter implements PlatformAdapter {
       }
       return { success: false, error: data.error || 'Failed to publish to LinkedIn' };
     } catch (err: any) {
-      await new Promise(r => setTimeout(r, 750));
       return {
-        success: true,
-        platformPostId: `urn:li:share:${Date.now()}`
+        success: false,
+        error: err.message || 'Failed to connect to SocialFlow backend for LinkedIn publishing.'
       };
     }
   }

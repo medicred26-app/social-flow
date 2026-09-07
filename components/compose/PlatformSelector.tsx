@@ -43,7 +43,7 @@ export function PlatformSelector({
             >
               <div className="relative">
                 <img
-                  src={acc.avatarUrl}
+                  src={acc.avatarUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80'}
                   alt={acc.name}
                   className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
                 />

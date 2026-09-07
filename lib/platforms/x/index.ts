@@ -14,7 +14,8 @@ export class XAdapter implements PlatformAdapter {
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch('http://localhost:5000/api/platforms/x/publish', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/x/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -25,10 +26,9 @@ export class XAdapter implements PlatformAdapter {
       }
       return { success: false, error: data.error || 'Failed to post Tweet' };
     } catch (err: any) {
-      await new Promise(r => setTimeout(r, 650));
       return {
-        success: true,
-        platformPostId: `x_tweet_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+        success: false,
+        error: err.message || 'Failed to connect to SocialFlow backend for X (Twitter) publishing.'
       };
     }
   }

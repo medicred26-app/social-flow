@@ -3,13 +3,15 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { User, Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, CheckCircle2, AlertCircle, Briefcase, UserCheck } from 'lucide-react';
+import { useAuth, UserRole } from '@/lib/auth-context';
+import { GoogleRoleModal } from '@/components/auth/GoogleRoleModal';
 
 export default function SignupPage() {
   const { signup, loginWithGoogle } = useAuth();
   const router = useRouter();
 
+  const [role, setRole] = useState<UserRole>('customer');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +19,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,19 +41,23 @@ export default function SignupPage() {
     setErrorMessage('');
     setIsLoading(true);
 
-    const res = await signup(email, password, name);
+    const res = await signup(email, password, name, role);
     setIsLoading(false);
 
     if (res.success) {
-      router.push('/dashboard');
+      if (role === 'freelancer') {
+        router.push('/freelancer');
+      } else {
+        router.push('/dashboard');
+      }
     } else {
       setErrorMessage(res.message || 'Failed to create account.');
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setErrorMessage('');
-    await loginWithGoogle();
+    setShowGoogleRoleModal(true);
   };
 
   return (
@@ -89,10 +96,12 @@ export default function SignupPage() {
 
             <div className="space-y-3 pt-4">
               <h2 className="text-2xl font-bold tracking-tight text-white leading-tight">
-                Start Managing Your Social Channels in Seconds
+                {role === 'freelancer' ? 'Grow Your Content Freelance Business' : 'Start Managing Your Social Channels'}
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Join thousands of creators, marketers, and agencies driving engagement with automated scheduling.
+                {role === 'freelancer' 
+                  ? 'Connect with top brands, showcase your creative portfolio, submit proposals, and get paid securely.' 
+                  : 'Join thousands of creators, marketers, and agencies driving engagement with AI content generation & automated scheduling.'}
               </p>
             </div>
 
@@ -101,8 +110,12 @@ export default function SignupPage() {
               <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-md">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white">Full Multi-Channel Access</span>
-                  <p className="text-[11px] text-slate-300">Connect Facebook, Instagram, YouTube, LinkedIn, and X.</p>
+                  <span className="font-semibold text-white">
+                    {role === 'freelancer' ? 'Verified Client Marketplace' : 'Full Multi-Channel Access'}
+                  </span>
+                  <p className="text-[11px] text-slate-300">
+                    {role === 'freelancer' ? 'Access high-paying projects for video editing, graphics, & copy.' : 'Connect Facebook, Instagram, YouTube, LinkedIn, and X.'}
+                  </p>
                 </div>
               </div>
 
@@ -131,8 +144,47 @@ export default function SignupPage() {
               Create your account
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Get started with SocialFlow today. No credit card required.
+              Get started with SocialFlow today. Select your account type below.
             </p>
+          </div>
+
+          {/* Role Selection Cards */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setRole('customer')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                role === 'customer'
+                  ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-300 ring-2 ring-purple-500/20'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <UserCheck className="w-4 h-4 text-purple-500" />
+                <span className="font-semibold text-xs">Customer / Brand</span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                Manage social channels, AI tools & hire talent
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRole('freelancer')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                role === 'freelancer'
+                  ? 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-300 ring-2 ring-purple-500/20'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Briefcase className="w-4 h-4 text-purple-500" />
+                <span className="font-semibold text-xs">Freelancer</span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                Find social media jobs, deliver work & earn
+              </p>
+            </button>
           </div>
 
           {/* Error Banner */}
@@ -255,7 +307,7 @@ export default function SignupPage() {
                 <span>Creating Account...</span>
               ) : (
                 <>
-                  <span>Create Free Account</span>
+                  <span>Create {role === 'freelancer' ? 'Freelancer' : 'Customer'} Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -270,6 +322,12 @@ export default function SignupPage() {
           </p>
         </div>
       </div>
+
+      <GoogleRoleModal
+        isOpen={showGoogleRoleModal}
+        onClose={() => setShowGoogleRoleModal(false)}
+      />
     </div>
   );
 }
+

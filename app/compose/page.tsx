@@ -31,9 +31,39 @@ export default function ComposePage() {
   useEffect(() => {
     const accs = getStoredAccounts();
     setAccounts(accs);
-    // Pre-select first 3 connected accounts
+    // Pre-select connected accounts
     const active = accs.filter(a => a.connected).map(a => a.id);
     setSelectedAccountIds(active);
+
+    // Check for draft passed from Content Studio, Library, or Projects
+    if (typeof window !== 'undefined') {
+      const rawDraft = sessionStorage.getItem('socialflow_studio_draft');
+      if (rawDraft) {
+        try {
+          const draft = JSON.parse(rawDraft);
+          if (draft.caption) {
+            const tagsStr = Array.isArray(draft.hashtags) ? draft.hashtags.join(' ') : '';
+            setCaption(`${draft.caption}\n\n${tagsStr}`);
+          }
+          if (draft.mediaUrl) {
+            setMedia([
+              {
+                id: `m-studio-${Date.now()}`,
+                url: draft.mediaUrl,
+                type: 'video',
+                name: `${(draft.title || 'Studio_Export').toLowerCase().replace(/\s+/g, '_')}.mp4`,
+                size: '12.4 MB'
+              }
+            ]);
+          }
+          setNotification({
+            type: 'success',
+            message: `✨ Pre-loaded content "${draft.title || 'Studio Asset'}" from Content Studio!`
+          });
+          sessionStorage.removeItem('socialflow_studio_draft');
+        } catch (e) {}
+      }
+    }
   }, []);
 
   const handleToggleAccount = (id: string) => {
