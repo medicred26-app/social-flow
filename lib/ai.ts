@@ -18,3 +18,29 @@ export async function aiPost(path: string, body: Record<string, unknown>) {
     })
   );
 }
+
+export async function generateAiVideo(
+  body: Record<string, unknown>,
+  onStatus?: (status: string) => void
+) {
+  const started = await aiPost('/video/generate', body);
+  if (started.videoUrl || started.storyboard) return started;
+  if (!started.jobId) {
+    throw new Error(started.error || 'Video job did not start.');
+  }
+
+  const deadline = Date.now() + 240000;
+  while (Date.now() < deadline) {
+    onStatus?.(started.status || 'queued');
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    const job = await parseAi(
+      await fetch(`${getBackendUrl()}/api/ai/video/jobs/${started.jobId}`, { cache: 'no-store' })
+    );
+    onStatus?.(job.status || 'running');
+    if (job.status === 'done') return job;
+    if (job.status === 'error' || job.success === false) {
+      throw new Error(job.error || 'Video generation failed.');
+    }
+  }
+  throw new Error('Video generation timed out. Try again in a minute.');
+}

@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { ContentItem, MediaItem } from '@/types';
 import { saveStoredLibraryItems, getStoredLibraryItems } from '@/lib/store';
-import { aiPost, getBackendUrl } from '@/lib/ai';
+import { aiPost, generateAiVideo, getBackendUrl } from '@/lib/ai';
+import { composeMotionVideo, isPlayableVideoUrl } from '@/lib/video-compose';
 
 export default function ContentStudioPage() {
   const router = useRouter();
@@ -66,24 +67,49 @@ export default function ContentStudioPage() {
   const handleGenerateAIVideo = async () => {
     if (!prompt.trim()) return;
     setIsGenerating(true);
+    setNotif('Generating your reel. This can take up to a minute...');
     try {
-      const data = await aiPost('/video/generate', {
-        prompt,
-        aspectRatio,
-        durationSeconds: 8,
-      });
-      if (data.videoUrl) setVideoUrl(resolveMediaUrl(data.videoUrl));
+      const data = await generateAiVideo(
+        {
+          prompt,
+          aspectRatio,
+          durationSeconds: 6,
+        },
+        (status) => setNotif(`Generating video (${status})...`)
+      );
       if (data.thumbnailUrl) setThumbnailUrl(resolveMediaUrl(data.thumbnailUrl));
       if (data.caption) setCaptionText(data.caption);
       if (data.hook) setHookText(data.hook);
       if (data.cta) setCTAText(data.cta);
       if (Array.isArray(data.hashtags)) setHashtags(data.hashtags);
+
+      const remoteVideo = data.videoUrl ? resolveMediaUrl(data.videoUrl) : '';
+      if (data.mediaType === 'video' && remoteVideo) {
+        setVideoUrl(remoteVideo);
+      } else if (data.storyboard || data.mediaType === 'storyboard' || data.mediaType === 'image') {
+        const composed = await composeMotionVideo({
+          title: data.storyboard?.title || mediaTitle,
+          scenes: data.storyboard?.scenes || [
+            { heading: 'HOOK', line: data.hook || prompt, color: '#4f46e5' },
+            { heading: 'STORY', line: data.script || data.caption || prompt, color: '#7c3aed' },
+            { heading: 'CTA', line: data.cta || 'Follow for more', color: '#db2777' },
+          ],
+          aspectRatio,
+          durationSeconds: Number(data.durationSeconds) || 8,
+        });
+        setVideoUrl(composed);
+        if (remoteVideo && !isPlayableVideoUrl(remoteVideo)) {
+          setThumbnailUrl(remoteVideo);
+        }
+      } else if (remoteVideo) {
+        setVideoUrl(remoteVideo);
+      }
       setNotif(data.message || '✨ Gemini generated your video package.');
     } catch (err: any) {
       setNotif(err.message || 'Video generation failed.');
     } finally {
       setIsGenerating(false);
-      setTimeout(() => setNotif(null), 5000);
+      setTimeout(() => setNotif(null), 8000);
     }
   };
 
@@ -275,16 +301,30 @@ export default function ContentStudioPage() {
 
             {/* Video Player Display Box */}
             <div className="relative rounded-2xl bg-slate-950 overflow-hidden aspect-[16/9] flex items-center justify-center border border-slate-800 group shadow-inner">
-              <img
-                src={videoUrl}
-                alt={mediaTitle}
-                className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-center justify-center">
-                <button className="w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 text-white flex items-center justify-center shadow-2xl transition-all transform hover:scale-110">
-                  <Play className="w-6 h-6 text-white ml-0.5 fill-white" />
-                </button>
-              </div>
+              {isPlayableVideoUrl(videoUrl) ? (
+                <video
+                  key={videoUrl}
+                  src={videoUrl}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <>
+                  <img
+                    src={videoUrl}
+                    alt={mediaTitle}
+                    className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-center justify-center pointer-events-none">
+                    <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md border border-white/40 text-white flex items-center justify-center shadow-2xl">
+                      <Play className="w-6 h-6 text-white ml-0.5 fill-white" />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Aspect Ratio Badge Overlay */}
               <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white border border-slate-700">
@@ -389,7 +429,7 @@ export default function ContentStudioPage() {
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  <span>{isGenerating ? 'Generating Video Clips...' : 'Generate AI Video Clip'}</span>
+                  <span>{isGenerating ? 'Generating video… keep this tab open' : 'Generate AI Video Clip'}</span>
                 </button>
               </div>
             )}
