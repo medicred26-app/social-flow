@@ -1,21 +1,20 @@
+import { getBackendUrl, startPlatformOAuth } from '@/lib/backend';
 import { PlatformAdapter, SocialPostPayload, PlatformActionResult } from '../types';
 
 export class LinkedInAdapter implements PlatformAdapter {
   platformId = 'linkedin' as const;
   displayName = 'LinkedIn Profile';
 
-  async connect(params?: any) {
+  async connect() {
     if (typeof window !== 'undefined') {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      window.location.href = `${backendUrl}/api/platforms/linkedin/oauth`;
+      startPlatformOAuth('linkedin');
     }
     return { success: true };
   }
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const res = await fetch(`${backendUrl}/api/platforms/linkedin/publish`, {
+      const res = await fetch(`${getBackendUrl()}/api/platforms/linkedin/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -33,7 +32,7 @@ export class LinkedInAdapter implements PlatformAdapter {
     }
   }
 
-  async disconnect(accountId: string) {
+  async disconnect(_accountId: string) {
     return { success: true };
   }
 
@@ -41,7 +40,7 @@ export class LinkedInAdapter implements PlatformAdapter {
     return { success: true, newToken: token };
   }
 
-  async validateToken(token: string) {
+  async validateToken() {
     return { valid: true };
   }
 }

@@ -5,6 +5,7 @@ import { SocialAccount, SocialPlatform } from '@/types';
 import { getStoredAccounts, saveStoredAccounts } from '@/lib/store';
 import { PlatformConnectCard } from '@/components/accounts/PlatformConnectCard';
 import { PLATFORM_CONFIGS } from '@/lib/constants';
+import { getBackendUrl } from '@/lib/backend';
 import { 
   Share2, 
   Plus, 
@@ -38,6 +39,8 @@ export default function AccountsPage() {
       const isFbConnected = urlParams.get('facebook_connected') === 'true';
       const isIgConnected = urlParams.get('instagram_connected') === 'true';
       const isYtConnected = urlParams.get('youtube_connected') === 'true';
+      const isXConnected = urlParams.get('x_connected') === 'true';
+      const isLiConnected = urlParams.get('linkedin_connected') === 'true';
       const oauthError = urlParams.get('error');
 
       if (oauthError) {
@@ -169,6 +172,46 @@ export default function AccountsPage() {
         setNotification({ type: 'success', message: `Successfully connected YouTube channel "${name}"!` });
         window.history.replaceState({}, '', window.location.pathname);
         return;
+      } else if (isXConnected || isLiConnected) {
+        const platform = isXConnected ? 'x' : 'linkedin';
+        const name = urlParams.get('name') || (isXConnected ? 'X Account' : 'LinkedIn Profile');
+        const handle = urlParams.get('handle') || (isXConnected ? '@x' : 'linkedin');
+        const avatar = urlParams.get('avatar') || '';
+        const followers = parseInt(urlParams.get('followers') || '0', 10);
+        let found = false;
+        const updated = loadedAccounts.map((acc) => {
+          if (acc.platform === platform) {
+            found = true;
+            return {
+              ...acc,
+              name,
+              handle,
+              connected: true,
+              connectedAt: new Date().toISOString(),
+              followerCount: followers,
+              avatarUrl: avatar || acc.avatarUrl,
+            };
+          }
+          return acc;
+        });
+        if (!found) {
+          updated.unshift({
+            id: `acc-${platform}-${Date.now()}`,
+            platform,
+            name,
+            handle,
+            avatarUrl: avatar || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+            connected: true,
+            connectedAt: new Date().toISOString(),
+            followerCount: followers,
+            accountType: 'profile',
+          });
+        }
+        setAccounts(updated);
+        saveStoredAccounts(updated);
+        setNotification({ type: 'success', message: `Successfully connected ${name}!` });
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
       }
     }
 
@@ -202,8 +245,7 @@ export default function AccountsPage() {
     saveStoredAccounts(updated);
 
     if (isDisconnecting && target) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      fetch(`${backendUrl}/api/accounts/disconnect`, {
+      fetch(`${getBackendUrl()}/api/accounts/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform: target.platform, accountId: target.id })
@@ -218,8 +260,7 @@ export default function AccountsPage() {
     saveStoredAccounts(updated);
 
     if (target) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      fetch(`${backendUrl}/api/accounts/delete-credentials`, {
+      fetch(`${getBackendUrl()}/api/accounts/delete-credentials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform: target.platform, accountId: target.id })

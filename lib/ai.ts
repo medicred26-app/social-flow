@@ -1,9 +1,5 @@
-export function getBackendUrl() {
-  const raw = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
-  if (raw) return raw;
-  if (process.env.NODE_ENV === 'production') return 'https://socialflow-api.onrender.com';
-  return 'http://localhost:5000';
-}
+export { getBackendUrl, startPlatformOAuth } from './backend';
+import { getBackendUrl } from './backend';
 
 async function parseAi(res: Response) {
   const data = await res.json().catch(() => ({}));
