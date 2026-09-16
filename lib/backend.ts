@@ -1,4 +1,4 @@
-const PROD_API = 'https://socialflow-api.onrender.com';
+const PROD_API = 'https://socialflow-api-7ulz.onrender.com';
 
 function stripSlash(url: string) {
   return url.replace(/\/$/, '');

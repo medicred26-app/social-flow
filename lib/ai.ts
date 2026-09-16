@@ -21,7 +21,7 @@ export async function aiPost(path: string, body: Record<string, unknown>) {
 
 export async function generateAiVideo(
   body: Record<string, unknown>,
-  onStatus?: (status: string) => void
+  onStatus?: (status: string, job?: Record<string, unknown>) => void
 ) {
   const started = await aiPost('/video/generate', body);
   if (started.videoUrl || started.storyboard) return started;
@@ -31,12 +31,12 @@ export async function generateAiVideo(
 
   const deadline = Date.now() + 240000;
   while (Date.now() < deadline) {
-    onStatus?.(started.status || 'queued');
+    onStatus?.(started.message || started.status || 'queued', started);
     await new Promise((resolve) => setTimeout(resolve, 2500));
     const job = await parseAi(
       await fetch(`${getBackendUrl()}/api/ai/video/jobs/${started.jobId}`, { cache: 'no-store' })
     );
-    onStatus?.(job.status || 'running');
+    onStatus?.(job.message || job.status || 'running', job);
     if (job.status === 'done') return job;
     if (job.status === 'error' || job.success === false) {
       throw new Error(job.error || 'Video generation failed.');

@@ -6,28 +6,23 @@ import {
   Wand2, 
   Video, 
   Image as ImageIcon, 
-  Music, 
   Sparkles, 
   Scissors, 
   FileText, 
-  Hash, 
   Send, 
   FolderPlus, 
   UserPlus, 
   Play, 
-  Sliders, 
-  Layers, 
   CheckCircle2, 
   RefreshCw, 
-  Layout, 
   Zap, 
-  ArrowRight,
-  Maximize2
+  ArrowRight
 } from 'lucide-react';
-import { ContentItem, MediaItem } from '@/types';
+import { ContentItem } from '@/types';
 import { saveStoredLibraryItems, getStoredLibraryItems } from '@/lib/store';
 import { aiPost, generateAiVideo, getBackendUrl } from '@/lib/ai';
 import { composeMotionVideo, isPlayableVideoUrl } from '@/lib/video-compose';
+import { PipelineStepper, PipelineStage } from '@/components/studio/PipelineStepper';
 
 export default function ContentStudioPage() {
   const router = useRouter();
@@ -46,7 +41,15 @@ export default function ContentStudioPage() {
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
 
   // AI Prompt & Outputs
-  const [prompt, setPrompt] = useState('Create a high-energy 15-second product reel showcasing AI automation features');
+  const [prompt, setPrompt] = useState('Create a high-energy 15-second product reel showcasing AI automation features. Open with a creator staring at a messy content calendar, then reveal SocialFlow turning one script into YouTube, Instagram, and Facebook cuts.');
+  const [presenter, setPresenter] = useState<'ai_avatar' | 'screen' | 'animation'>('animation');
+  const [language, setLanguage] = useState('English');
+  const [durationSeconds, setDurationSeconds] = useState(15);
+  const [brandName, setBrandName] = useState('SocialFlow');
+  const [platforms, setPlatforms] = useState<string[]>(['youtube', 'instagram', 'facebook']);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [pipelineNotes, setPipelineNotes] = useState<string[]>([]);
+  const [reviewReady, setReviewReady] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [captionText, setCaptionText] = useState(
     '🚀 Transform your social media workflow with AI Content Studio! Generate viral videos, auto-captioning, and instant multi-platform scheduling.'
@@ -58,6 +61,14 @@ export default function ContentStudioPage() {
   // Notification state
   const [notif, setNotif] = useState<string | null>(null);
 
+  const togglePlatform = (platform: string) => {
+    setPlatforms((current) =>
+      current.includes(platform)
+        ? current.filter((item) => item !== platform)
+        : [...current, platform]
+    );
+  };
+
   const resolveMediaUrl = (url?: string) => {
     if (!url) return '';
     if (url.startsWith('/')) return `${getBackendUrl()}${url}`;
@@ -67,16 +78,31 @@ export default function ContentStudioPage() {
   const handleGenerateAIVideo = async () => {
     if (!prompt.trim()) return;
     setIsGenerating(true);
-    setNotif('Generating your reel. This can take up to a minute...');
+    setReviewReady(false);
+    setPipelineNotes([]);
+    setNotif('Starting the script-to-publish pipeline...');
     try {
       const data = await generateAiVideo(
         {
+          script: prompt,
           prompt,
+          title: mediaTitle,
+          presenter,
+          language,
+          brandName,
+          platforms,
           aspectRatio,
-          durationSeconds: 6,
+          durationSeconds,
         },
-        (status) => setNotif(`Generating video (${status})...`)
+        (status, job) => {
+          const stages = (job?.stages || []) as PipelineStage[];
+          if (stages.length) setPipelineStages(stages);
+          setNotif(status);
+        }
       );
+      if (Array.isArray(data.pipeline?.stages)) setPipelineStages(data.pipeline.stages);
+      if (Array.isArray(data.pipeline?.assetNotes)) setPipelineNotes(data.pipeline.assetNotes);
+      if (data.storyboard?.title) setMediaTitle(data.storyboard.title);
       if (data.thumbnailUrl) setThumbnailUrl(resolveMediaUrl(data.thumbnailUrl));
       if (data.caption) setCaptionText(data.caption);
       if (data.hook) setHookText(data.hook);
@@ -84,6 +110,7 @@ export default function ContentStudioPage() {
       if (Array.isArray(data.hashtags)) setHashtags(data.hashtags);
 
       const remoteVideo = data.videoUrl ? resolveMediaUrl(data.videoUrl) : '';
+      const audioUrl = data.audioUrl ? resolveMediaUrl(data.audioUrl) : '';
       if (data.mediaType === 'video' && remoteVideo) {
         setVideoUrl(remoteVideo);
       } else if (data.storyboard || data.mediaType === 'storyboard' || data.mediaType === 'image') {
@@ -95,7 +122,9 @@ export default function ContentStudioPage() {
             { heading: 'CTA', line: data.cta || 'Follow for more', color: '#db2777' },
           ],
           aspectRatio,
-          durationSeconds: Number(data.durationSeconds) || 8,
+          durationSeconds: Number(data.durationSeconds) || durationSeconds,
+          brandName,
+          audioUrl,
         });
         setVideoUrl(composed);
         if (remoteVideo && !isPlayableVideoUrl(remoteVideo)) {
@@ -104,7 +133,8 @@ export default function ContentStudioPage() {
       } else if (remoteVideo) {
         setVideoUrl(remoteVideo);
       }
-      setNotif(data.message || '✨ Gemini generated your video package.');
+      setReviewReady(true);
+      setNotif(data.message || 'Pipeline finished. Review the reel, then send it to Publisher.');
     } catch (err: any) {
       setNotif(err.message || 'Video generation failed.');
     } finally {
@@ -227,7 +257,7 @@ export default function ContentStudioPage() {
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Create, edit, repurpose, and optimize short-form videos &amp; social graphics with AI tools.
+              One script to planned scenes, generated assets, assembled reel, review, then publish.
             </p>
           </div>
         </div>
@@ -265,6 +295,15 @@ export default function ContentStudioPage() {
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2 shadow-sm animate-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4" />
           <span>{notif}</span>
+        </div>
+      )}
+
+      {(isGenerating || pipelineStages.length > 0) && (
+        <div className="space-y-2">
+          <PipelineStepper stages={pipelineStages} />
+          {pipelineNotes.length > 0 && (
+            <p className="text-[11px] text-slate-500">{pipelineNotes.join(' · ')}</p>
+          )}
         </div>
       )}
 
@@ -339,7 +378,7 @@ export default function ContentStudioPage() {
                   <Scissors className="w-4 h-4 text-indigo-500" />
                   <span>Timeline &amp; Auto Trimmer</span>
                 </span>
-                <span className="text-[11px] text-slate-400 font-normal">Duration: 00:15.0s</span>
+                <span className="text-[11px] text-slate-400 font-normal">Duration: {durationSeconds}s</span>
               </div>
               
               <div className="w-full h-6 bg-slate-200 dark:bg-slate-800 rounded-lg relative overflow-hidden flex items-center p-1 cursor-pointer">
@@ -408,15 +447,88 @@ export default function ContentStudioPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Describe Video Prompt
+                    Script
                   </label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe what video clips or graphics to generate..."
+                    placeholder="Write the full script. Gemini will break it into timed scenes."
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Presenter</label>
+                    <select
+                      value={presenter}
+                      onChange={(e) => setPresenter(e.target.value as typeof presenter)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs"
+                    >
+                      <option value="animation">2D animation / Veo</option>
+                      <option value="ai_avatar">AI presenter</option>
+                      <option value="screen">Screen / product</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Language</label>
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs"
+                    >
+                      <option>English</option>
+                      <option>Hindi</option>
+                      <option>Spanish</option>
+                      <option>French</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Duration</label>
+                    <select
+                      value={durationSeconds}
+                      onChange={(e) => setDurationSeconds(Number(e.target.value))}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs"
+                    >
+                      <option value={8}>8 seconds</option>
+                      <option value={15}>15 seconds</option>
+                      <option value={30}>30 seconds</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Brand</label>
+                    <input
+                      value={brandName}
+                      onChange={(e) => setBrandName(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Publish to</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'youtube', label: 'YouTube' },
+                      { id: 'instagram', label: 'Instagram' },
+                      { id: 'facebook', label: 'Facebook' },
+                      { id: 'tiktok', label: 'TikTok' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => togglePlatform(item.id)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border ${
+                          platforms.includes(item.id)
+                            ? 'bg-indigo-500 text-white border-indigo-500'
+                            : 'bg-slate-50 dark:bg-slate-950 text-slate-600 border-slate-300 dark:border-slate-800'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <button
@@ -429,7 +541,7 @@ export default function ContentStudioPage() {
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  <span>{isGenerating ? 'Generating video… keep this tab open' : 'Generate AI Video Clip'}</span>
+                  <span>{isGenerating ? 'Running pipeline… keep this tab open' : 'Submit script & generate'}</span>
                 </button>
               </div>
             )}
@@ -607,6 +719,17 @@ export default function ContentStudioPage() {
                 <p className="text-xs font-semibold text-pink-600 dark:text-pink-400 mt-0.5">{ctaText}</p>
               </div>
             </div>
+
+            {reviewReady && (
+              <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
+                  Review before publishing
+                </span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  The reel is stored for review. Play it, edit the caption if needed, then send it to Publisher for YouTube, Instagram, and Facebook.
+                </p>
+              </div>
+            )}
 
             {/* Send to Publisher Callout Card */}
             <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-pink-900/20 border border-indigo-500/30 space-y-3">

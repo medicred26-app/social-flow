@@ -5,10 +5,15 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: npm install --include=dev && npm run build
+    autoDeploy: true
+    buildCommand: npm install --include=dev --no-audit --no-fund && npx next build
     startCommand: npx next start -H 0.0.0.0 -p $PORT
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "20.19.4"
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=2048
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_APP_URL
