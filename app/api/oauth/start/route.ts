@@ -13,5 +13,5 @@ export async function GET(request: NextRequest) {
 
   const target = new URL(`/api/platforms/${platform}/oauth`, `${getBackendUrl()}/`);
   target.searchParams.set('frontend', origin);
-  return NextResponse.redirect(target);
+  return NextResponse.redirect(target.toString());
 }

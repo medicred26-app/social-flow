@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { SocialAccount, SocialPlatform } from '@/types';
 import { getStoredAccounts, saveStoredAccounts } from '@/lib/store';
+import { getBackendUrl } from '@/lib/backend';
 import { PlatformConnectCard } from '@/components/accounts/PlatformConnectCard';
 import { PLATFORM_CONFIGS } from '@/lib/constants';
 import { 
@@ -202,8 +203,7 @@ export default function AccountsPage() {
     saveStoredAccounts(updated);
 
     if (isDisconnecting && target) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      fetch(`${backendUrl}/api/accounts/disconnect`, {
+      fetch(`${getBackendUrl()}/api/accounts/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform: target.platform, accountId: target.id })
@@ -218,8 +218,7 @@ export default function AccountsPage() {
     saveStoredAccounts(updated);
 
     if (target) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      fetch(`${backendUrl}/api/accounts/delete-credentials`, {
+      fetch(`${getBackendUrl()}/api/accounts/delete-credentials`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform: target.platform, accountId: target.id })

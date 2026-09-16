@@ -12,7 +12,6 @@ import {
   Send, 
   FolderPlus, 
   UserPlus, 
-  Play, 
   CheckCircle2, 
   RefreshCw, 
   Zap, 
@@ -21,8 +20,9 @@ import {
 import { ContentItem } from '@/types';
 import { saveStoredLibraryItems, getStoredLibraryItems } from '@/lib/store';
 import { aiPost, generateAiVideo, getBackendUrl } from '@/lib/ai';
-import { composeMotionVideo, isPlayableVideoUrl } from '@/lib/video-compose';
+import { composeMotionVideo, isPlayableVideoUrl, StoryboardScene } from '@/lib/video-compose';
 import { PipelineStepper, PipelineStage } from '@/components/studio/PipelineStepper';
+import { VideoPreviewPlayer } from '@/components/studio/VideoPreviewPlayer';
 
 export default function ContentStudioPage() {
   const router = useRouter();
@@ -50,6 +50,7 @@ export default function ContentStudioPage() {
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [pipelineNotes, setPipelineNotes] = useState<string[]>([]);
   const [reviewReady, setReviewReady] = useState(false);
+  const [previewScenes, setPreviewScenes] = useState<StoryboardScene[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [captionText, setCaptionText] = useState(
     '🚀 Transform your social media workflow with AI Content Studio! Generate viral videos, auto-captioning, and instant multi-platform scheduling.'
@@ -111,27 +112,28 @@ export default function ContentStudioPage() {
 
       const remoteVideo = data.videoUrl ? resolveMediaUrl(data.videoUrl) : '';
       const audioUrl = data.audioUrl ? resolveMediaUrl(data.audioUrl) : '';
-      if (data.mediaType === 'video' && remoteVideo) {
+      const scenes: StoryboardScene[] = data.storyboard?.scenes || [
+        { heading: 'HOOK', line: data.hook || prompt, color: '#4f46e5' },
+        { heading: 'STORY', line: data.script || data.caption || prompt, color: '#7c3aed' },
+        { heading: 'CTA', line: data.cta || 'Follow for more', color: '#db2777' },
+      ];
+      setPreviewScenes(scenes);
+      if (remoteVideo && !isPlayableVideoUrl(remoteVideo)) {
+        setThumbnailUrl(remoteVideo);
+      }
+
+      if (data.mediaType === 'video' && isPlayableVideoUrl(remoteVideo)) {
         setVideoUrl(remoteVideo);
-      } else if (data.storyboard || data.mediaType === 'storyboard' || data.mediaType === 'image') {
+      } else {
         const composed = await composeMotionVideo({
           title: data.storyboard?.title || mediaTitle,
-          scenes: data.storyboard?.scenes || [
-            { heading: 'HOOK', line: data.hook || prompt, color: '#4f46e5' },
-            { heading: 'STORY', line: data.script || data.caption || prompt, color: '#7c3aed' },
-            { heading: 'CTA', line: data.cta || 'Follow for more', color: '#db2777' },
-          ],
+          scenes,
           aspectRatio,
           durationSeconds: Number(data.durationSeconds) || durationSeconds,
           brandName,
           audioUrl,
         });
         setVideoUrl(composed);
-        if (remoteVideo && !isPlayableVideoUrl(remoteVideo)) {
-          setThumbnailUrl(remoteVideo);
-        }
-      } else if (remoteVideo) {
-        setVideoUrl(remoteVideo);
       }
       setReviewReady(true);
       setNotif(data.message || 'Pipeline finished. Review the reel, then send it to Publisher.');
@@ -338,38 +340,12 @@ export default function ContentStudioPage() {
               </div>
             </div>
 
-            {/* Video Player Display Box */}
-            <div className="relative rounded-2xl bg-slate-950 overflow-hidden aspect-[16/9] flex items-center justify-center border border-slate-800 group shadow-inner">
-              {isPlayableVideoUrl(videoUrl) ? (
-                <video
-                  key={videoUrl}
-                  src={videoUrl}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <>
-                  <img
-                    src={videoUrl}
-                    alt={mediaTitle}
-                    className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-center justify-center pointer-events-none">
-                    <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md border border-white/40 text-white flex items-center justify-center shadow-2xl">
-                      <Play className="w-6 h-6 text-white ml-0.5 fill-white" />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Aspect Ratio Badge Overlay */}
-              <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white border border-slate-700">
-                {aspectRatio === '9:16' ? 'Vertical Reels/Shorts (9:16)' : aspectRatio === '16:9' ? 'Landscape Video (16:9)' : 'Square Feed (1:1)'}
-              </div>
-            </div>
+            <VideoPreviewPlayer
+              title={mediaTitle}
+              videoUrl={videoUrl}
+              aspectRatio={aspectRatio}
+              scenes={previewScenes}
+            />
 
             {/* Timeline Trimmer & Controls Bar */}
             <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">

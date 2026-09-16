@@ -22,9 +22,9 @@ services:
           type: web
           envVarKey: RENDER_EXTERNAL_URL
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://socialflow-api.onrender.com
+        value: https://socialflow-api-7ulz.onrender.com
       - key: NEXT_PUBLIC_API_URL
-        value: https://socialflow-api.onrender.com/api
+        value: https://socialflow-api-7ulz.onrender.com/api
       - key: NEXT_PUBLIC_SUPABASE_URL
         value: https://kettuzklxorjkydoqcqr.supabase.co
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
