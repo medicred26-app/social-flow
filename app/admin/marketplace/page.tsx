@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Star
 } from 'lucide-react';
+import { AdminGuard } from '@/components/admin/AdminGuard';
 import { 
   FreelancerProfile, 
   fetchPendingFreelancers, 
@@ -26,6 +27,14 @@ import {
 } from '@/lib/marketplace';
 
 export default function AdminMarketplacePage() {
+  return (
+    <AdminGuard>
+      <AdminMarketplaceContent />
+    </AdminGuard>
+  );
+}
+
+function AdminMarketplaceContent() {
   const [pendingFreelancers, setPendingFreelancers] = useState<FreelancerProfile[]>([]);
   const [commissionRate, setCommissionRate] = useState<number>(15);
   const [newCommissionInput, setNewCommissionInput] = useState<string>('15');

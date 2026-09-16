@@ -81,7 +81,7 @@ export default function PublicLandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200" suppressHydrationWarning>
       
       {/* Top Banner for Logged-In Users */}
       {user && (
@@ -115,6 +115,10 @@ export default function PublicLandingPage() {
           <a href="#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Features</a>
           <a href="#help" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Help & FAQ</a>
           <a href="#contact" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Contact Us</a>
+          <Link href="/admin" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors inline-flex items-center gap-1 font-bold text-purple-600 dark:text-purple-400">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Admin Portal</span>
+          </Link>
         </nav>
 
         {/* Action Controls */}
@@ -125,6 +129,14 @@ export default function PublicLandingPage() {
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
           </button>
+
+          <Link
+            href="/admin"
+            className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/20 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5 shadow-sm"
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-500" />
+            <span>Admin</span>
+          </Link>
 
           {user ? (
             <Link

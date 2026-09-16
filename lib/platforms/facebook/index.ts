@@ -1,12 +1,13 @@
-import { getBackendUrl, startPlatformOAuth } from '@/lib/backend';
 import { PlatformAdapter, SocialPostPayload, PlatformActionResult } from '../types';
 
 export class FacebookAdapter implements PlatformAdapter {
   platformId = 'facebook' as const;
   displayName = 'Facebook Page';
 
-  async connect() {
+  async connect(params?: any) {
+    // Calls independent Facebook backend OAuth endpoint
     if (typeof window !== 'undefined') {
+      const { startPlatformOAuth } = await import('../../backend');
       startPlatformOAuth('facebook');
     }
     return { success: true };
@@ -14,7 +15,8 @@ export class FacebookAdapter implements PlatformAdapter {
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch(`${getBackendUrl()}/api/platforms/facebook/publish`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/facebook/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -32,7 +34,7 @@ export class FacebookAdapter implements PlatformAdapter {
     }
   }
 
-  async disconnect(_accountId: string) {
+  async disconnect(accountId: string) {
     return { success: true };
   }
 
@@ -40,7 +42,7 @@ export class FacebookAdapter implements PlatformAdapter {
     return { success: true, newToken: token };
   }
 
-  async validateToken() {
+  async validateToken(token: string) {
     return { valid: true };
   }
 }

@@ -6,6 +6,12 @@ import { useRouter } from 'next/navigation';
 import { User, Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, ArrowLeft, Shield, CheckCircle2, AlertCircle, Briefcase, UserCheck } from 'lucide-react';
 import { useAuth, UserRole } from '@/lib/auth-context';
 import { GoogleRoleModal } from '@/components/auth/GoogleRoleModal';
+import { OtpVerificationModal } from '@/components/auth/OtpVerificationModal';
+import { sendOtpEmail } from '@/lib/emailjs';
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export default function SignupPage() {
   const { signup, loginWithGoogle } = useAuth();
@@ -21,38 +27,70 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false);
 
+  // OTP state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [currentOtp, setCurrentOtp] = useState('');
+
+  const validateForm = (): string | null => {
+    if (!name || !email || !password || !confirmPassword) return 'Please fill in all fields.';
+    if (password !== confirmPassword) return 'Passwords do not match.';
+    if (password.length < 6) return 'Password must be at least 6 characters long.';
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password || !confirmPassword) {
-      setErrorMessage('Please fill in all fields.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
     setErrorMessage('');
     setIsLoading(true);
 
+    const otp = generateOtp();
+    setCurrentOtp(otp);
+
+    // Send OTP email via EmailJS
+    const { success, error } = await sendOtpEmail({ toEmail: email, toName: name, otp });
+
+    setIsLoading(false);
+
+    if (!success) {
+      setErrorMessage(
+        error
+          ? `Failed to send verification email: ${error}. Please check your email address or try again.`
+          : 'Could not send verification email. Please try again.'
+      );
+      return;
+    }
+
+    // Show OTP verification modal
+    setShowOtpModal(true);
+  };
+
+  // Called when OTP is verified successfully
+  const handleOtpVerified = async () => {
+    setShowOtpModal(false);
+    setIsLoading(true);
+
     const res = await signup(email, password, name, role);
     setIsLoading(false);
 
     if (res.success) {
-      if (role === 'freelancer') {
-        router.push('/freelancer');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push(role === 'freelancer' ? '/freelancer' : '/dashboard');
     } else {
-      setErrorMessage(res.message || 'Failed to create account.');
+      setErrorMessage(res.message || 'Failed to create account. Please try again.');
     }
+  };
+
+  // Called when user clicks "Resend Code" inside modal
+  const handleResendOtp = async (): Promise<boolean> => {
+    const newOtp = generateOtp();
+    setCurrentOtp(newOtp);
+    const { success } = await sendOtpEmail({ toEmail: email, toName: name, otp: newOtp });
+    return success;
   };
 
   const handleGoogleSignIn = () => {
@@ -122,6 +160,14 @@ export default function SignupPage() {
               <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-md">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div>
+                  <span className="font-semibold text-white">Email OTP Verified Accounts</span>
+                  <p className="text-[11px] text-slate-300">All new accounts are secured with OTP email verification on signup.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-md">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div>
                   <span className="font-semibold text-white">Google OAuth 2.0 Security</span>
                   <p className="text-[11px] text-slate-300">Sign up seamlessly with your Google Account.</p>
                 </div>
@@ -132,7 +178,7 @@ export default function SignupPage() {
           <div className="pt-8 text-xs text-slate-400 relative z-10 flex items-center justify-between border-t border-slate-800/80">
             <span>© 2026 SocialFlow Inc.</span>
             <span className="flex items-center gap-1 text-slate-300 font-medium">
-              <Shield className="w-3.5 h-3.5 text-purple-400" /> Enterprise Security
+              <Shield className="w-3.5 h-3.5 text-purple-400" /> OTP Verified
             </span>
           </div>
         </div>
@@ -144,7 +190,7 @@ export default function SignupPage() {
               Create your account
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Get started with SocialFlow today. Select your account type below.
+              Get started with SocialFlow today. A verification code will be sent to your email.
             </p>
           </div>
 
@@ -304,10 +350,10 @@ export default function SignupPage() {
               className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:opacity-95 text-white rounded-xl py-2.5 px-4 text-xs font-semibold shadow-lg shadow-purple-500/25 transition-all cursor-pointer disabled:opacity-50 pt-3"
             >
               {isLoading ? (
-                <span>Creating Account...</span>
+                <span>Sending verification code...</span>
               ) : (
                 <>
-                  <span>Create {role === 'freelancer' ? 'Freelancer' : 'Customer'} Account</span>
+                  <span>Send Verification Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -327,7 +373,16 @@ export default function SignupPage() {
         isOpen={showGoogleRoleModal}
         onClose={() => setShowGoogleRoleModal(false)}
       />
+
+      <OtpVerificationModal
+        isOpen={showOtpModal}
+        email={email}
+        name={name}
+        expectedOtp={currentOtp}
+        onClose={() => setShowOtpModal(false)}
+        onVerified={handleOtpVerified}
+        onResendOtp={handleResendOtp}
+      />
     </div>
   );
 }
-

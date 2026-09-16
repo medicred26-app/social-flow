@@ -1,12 +1,12 @@
-import { getBackendUrl, startPlatformOAuth } from '@/lib/backend';
 import { PlatformAdapter, SocialPostPayload, PlatformActionResult } from '../types';
 
 export class XAdapter implements PlatformAdapter {
   platformId = 'x' as const;
   displayName = 'X (Twitter)';
 
-  async connect() {
+  async connect(params?: any) {
     if (typeof window !== 'undefined') {
+      const { startPlatformOAuth } = await import('../../backend');
       startPlatformOAuth('x');
     }
     return { success: true };
@@ -14,7 +14,8 @@ export class XAdapter implements PlatformAdapter {
 
   async publish(payload: SocialPostPayload): Promise<PlatformActionResult> {
     try {
-      const res = await fetch(`${getBackendUrl()}/api/platforms/x/publish`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/platforms/x/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -32,7 +33,7 @@ export class XAdapter implements PlatformAdapter {
     }
   }
 
-  async disconnect(_accountId: string) {
+  async disconnect(accountId: string) {
     return { success: true };
   }
 
@@ -40,7 +41,7 @@ export class XAdapter implements PlatformAdapter {
     return { success: true, newToken: token };
   }
 
-  async validateToken() {
+  async validateToken(token: string) {
     return { valid: true };
   }
 }

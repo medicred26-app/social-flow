@@ -8,6 +8,7 @@ import { Navbar } from '@/components/ui/Navbar';
 import { CustomCursor } from '@/components/ui/CustomCursor';
 import { useAuth } from '@/lib/auth-context';
 import { Lock, LogIn, Sparkles, ShieldAlert, ArrowRight, UserCheck, Briefcase } from 'lucide-react';
+import MessagingWidget from '@/components/messaging/MessagingWidget';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -137,6 +138,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Floating Messaging Widget */}
+      <MessagingWidget />
     </div>
   );
 }
