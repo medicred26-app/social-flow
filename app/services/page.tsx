@@ -19,30 +19,40 @@ import {
   ArrowRight,
   ExternalLink
 } from 'lucide-react';
-import { FreelancerProfile, ServiceCategory, Project } from '@/types';
-import { getStoredFreelancers, getStoredClientProjects, saveStoredClientProjects } from '@/lib/store';
+import { FreelancerProfile, fetchApprovedFreelancers, createJobRequest } from '@/lib/marketplace';
+import { useAuth } from '@/lib/auth-context';
+import Link from 'next/link';
 
 export default function ServicesPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [freelancers, setFreelancers] = useState<FreelancerProfile[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hireModalFreelancer, setHireModalFreelancer] = useState<FreelancerProfile | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Hire Project Form State
-  const [projectTitle, setProjectTitle] = useState('Custom Video Editing Project');
-  const [projectDesc, setProjectDesc] = useState('Edit raw video clips into 9:16 vertical Reels format with custom color grading and viral subtitles.');
+  const [projectTitle, setProjectTitle] = useState('Custom Social Media Project');
+  const [projectDesc, setProjectDesc] = useState('Please describe your project requirements...');
+  const [projectBudget, setProjectBudget] = useState<number>(5000);
   const [notif, setNotif] = useState<string | null>(null);
 
   useEffect(() => {
-    setFreelancers(getStoredFreelancers());
+    async function load() {
+      setIsLoading(true);
+      const data = await fetchApprovedFreelancers();
+      setFreelancers(data);
+      setIsLoading(false);
+    }
+    load();
 
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const cat = urlParams.get('category');
       if (cat) setSelectedCategory(cat);
 
-      // Restore hire context if navigated from Content Studio or Library
       const hireContext = sessionStorage.getItem('socialflow_hire_context');
       if (hireContext) {
         try {
@@ -53,58 +63,60 @@ export default function ServicesPage() {
     }
   }, []);
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hireModalFreelancer) return;
 
-    const price = hireModalFreelancer.startingPrice;
-    const platformFee = Math.round(price * 0.15); // 15% configurable platform fee
-    const freelancerEarnings = price - platformFee;
+    if (!user) {
+      alert('Please log in to hire a freelancer.');
+      router.push('/login');
+      return;
+    }
 
-    const newProject: Project = {
-      id: `proj-${Date.now()}`,
+    setIsSubmitting(true);
+    const result = await createJobRequest({
+      clientId: user.id || user.email,
+      clientName: user.name,
+      clientEmail: user.email,
+      freelancerId: hireModalFreelancer.id,
       title: projectTitle,
       description: projectDesc,
-      category: hireModalFreelancer.categories[0] || 'video_editing',
-      clientId: 'user-demo',
-      clientName: 'Alex Morgan',
-      freelancerId: hireModalFreelancer.id,
-      freelancerName: hireModalFreelancer.name,
-      freelancerAvatar: hireModalFreelancer.avatarUrl,
-      price,
-      platformFee,
-      freelancerEarnings,
-      status: 'in_progress',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      category: hireModalFreelancer.categories[0] || 'General',
+      budget: projectBudget,
+      deadlineDays: 7
+    });
+    setIsSubmitting(false);
 
-    const currentProjects = getStoredClientProjects();
-    saveStoredClientProjects([newProject, ...currentProjects]);
-
-    setHireModalFreelancer(null);
-    setNotif(`🚀 Hired ${hireModalFreelancer.name}! Project "${projectTitle}" created successfully.`);
-    setTimeout(() => {
-      setNotif(null);
-      router.push('/projects');
-    }, 1500);
+    if (result.success) {
+      setHireModalFreelancer(null);
+      setNotif(`🚀 Job request sent to ${hireModalFreelancer.user_name || hireModalFreelancer.professional_title}! Redirecting to your projects...`);
+      setTimeout(() => {
+        setNotif(null);
+        router.push('/projects');
+      }, 1800);
+    } else {
+      alert(result.error || 'Failed to create job request.');
+    }
   };
 
   const CATEGORIES: { id: string; label: string }[] = [
     { id: 'all', label: 'All Services' },
-    { id: 'video_editing', label: '✂️ Video Editors' },
-    { id: 'thumbnail_design', label: '🖼️ Thumbnail Designers' },
-    { id: 'graphic_design', label: '🎨 Graphic Designers' },
-    { id: 'seo_specialist', label: '📈 SEO Specialists' },
-    { id: 'social_media_manager', label: '📱 Social Media Managers' },
-    { id: 'motion_graphics', label: '🎬 Motion Graphics' }
+    { id: 'Video Editing', label: '✂️ Video Editors' },
+    { id: 'Thumbnail Design', label: '🖼️ Thumbnail Designers' },
+    { id: 'Graphic Design', label: '🎨 Graphic Designers' },
+    { id: 'SEO', label: '📈 SEO Specialists' },
+    { id: 'Social Media Management', label: '📱 Social Media Managers' },
+    { id: 'Motion Graphics', label: '🎬 Motion Graphics' }
   ];
 
   const filteredFreelancers = freelancers.filter(f => {
-    const matchesCategory = selectedCategory === 'all' || f.categories.includes(selectedCategory as ServiceCategory);
-    const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          f.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'all' || f.categories.includes(selectedCategory);
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      (f.user_name || '').toLowerCase().includes(q) ||
+      f.professional_title.toLowerCase().includes(q) ||
+      f.bio.toLowerCase().includes(q) ||
+      f.skills.some(s => s.toLowerCase().includes(q));
     return matchesCategory && matchesSearch;
   });
 
@@ -174,6 +186,18 @@ export default function ServicesPage() {
       </div>
 
       {/* Freelancers Directory Grid */}
+      {isLoading ? (
+        <div className="py-16 text-center text-xs text-slate-400 col-span-3">
+          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          Loading freelancers...
+        </div>
+      ) : filteredFreelancers.length === 0 ? (
+        <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 col-span-3">
+          <Briefcase className="w-12 h-12 text-slate-400 mx-auto" />
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No freelancers found</p>
+          <p className="text-xs text-slate-400">Try adjusting your search or category filter. New freelancers are added regularly.</p>
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredFreelancers.map((freelancer) => (
           <div
@@ -185,58 +209,56 @@ export default function ServicesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={freelancer.avatarUrl}
-                    alt={freelancer.name}
+                    src={freelancer.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(freelancer.user_email)}`}
+                    alt={freelancer.user_name || freelancer.professional_title}
                     className="w-12 h-12 rounded-2xl object-cover border border-purple-500/30"
                   />
                   <div>
                     <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">
-                      {freelancer.name}
+                      {freelancer.user_name || freelancer.user_email.split('@')[0]}
                     </h3>
                     <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                      {freelancer.handle}
+                      {freelancer.professional_title}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl text-xs font-bold">
+                <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl text-xs font-bold flex-shrink-0">
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  <span>{freelancer.rating} ({freelancer.reviewCount})</span>
+                  <span>{Number(freelancer.rating_avg) > 0 ? Number(freelancer.rating_avg).toFixed(1) : 'New'}</span>
                 </div>
               </div>
 
-              {/* Title & Bio */}
+              {/* Bio */}
               <div>
-                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{freelancer.title}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                   {freelancer.bio}
                 </p>
               </div>
 
               {/* Skills Badges */}
               <div className="flex flex-wrap gap-1.5">
-                {freelancer.skills.map((skill, idx) => (
+                {(freelancer.skills || []).slice(0, 5).map((skill, idx) => (
                   <span key={idx} className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-lg">
                     {skill}
                   </span>
                 ))}
               </div>
 
-              {/* Portfolio Preview Image */}
-              {freelancer.portfolio[0] && (
-                <div className="rounded-2xl overflow-hidden aspect-video bg-slate-950 border border-slate-800 relative group">
-                  <img
-                    src={freelancer.portfolio[0].imageUrl}
-                    alt={freelancer.portfolio[0].title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent p-3 flex items-end">
-                    <span className="text-[11px] font-semibold text-white truncate">
-                      📁 {freelancer.portfolio[0].title}
-                    </span>
-                  </div>
-                </div>
-              )}
+              {/* Stats row */}
+              <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  {freelancer.completed_jobs_count || 0} jobs done
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {freelancer.experience_years}yr exp
+                </span>
+                <span className={`capitalize font-semibold ${freelancer.availability_status === 'available' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {freelancer.availability_status}
+                </span>
+              </div>
             </div>
 
             {/* Price Footer & Hire Action */}
@@ -244,17 +266,37 @@ export default function ServicesPage() {
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Starting at</span>
                 <span className="text-base font-extrabold text-slate-900 dark:text-white">
-                  ₹{freelancer.startingPrice.toLocaleString()}
+                  ₹{(freelancer.hourly_rate || 0).toLocaleString('en-IN')}
                 </span>
               </div>
 
-              <button
-                onClick={() => setHireModalFreelancer(freelancer)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/25 transition-all cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Hire Freelancer</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('socialflow_open_chat', {
+                      detail: {
+                        participant: {
+                          id: freelancer.user_id || freelancer.id,
+                          name: freelancer.user_name || freelancer.professional_title,
+                          avatar: freelancer.user_avatar
+                        }
+                      }
+                    }));
+                  }}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  title="Message Freelancer"
+                >
+                  Message
+                </button>
+
+                <Link
+                  href={`/services/freelancer/${freelancer.id}`}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/25 transition-all"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>View & Hire</span>
+                </Link>
+              </div>
             </div>
           </div>
         ))}
@@ -267,16 +309,16 @@ export default function ServicesPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <img
-                  src={hireModalFreelancer.avatarUrl}
-                  alt={hireModalFreelancer.name}
+                  src={hireModalFreelancer.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${hireModalFreelancer.user_email}`}
+                  alt={hireModalFreelancer.user_name || hireModalFreelancer.professional_title}
                   className="w-10 h-10 rounded-xl object-cover"
                 />
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Hire {hireModalFreelancer.name}
+                    Hire {hireModalFreelancer.user_name || hireModalFreelancer.professional_title}
                   </h3>
                   <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                    {hireModalFreelancer.title}
+                    {hireModalFreelancer.professional_title}
                   </span>
                 </div>
               </div>
@@ -291,9 +333,7 @@ export default function ServicesPage() {
 
             <form onSubmit={handleCreateOrder} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Project Title
-                </label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Project Title</label>
                 <input
                   type="text"
                   required
@@ -304,9 +344,7 @@ export default function ServicesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Project Brief &amp; Requirements
-                </label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Project Brief &amp; Requirements</label>
                 <textarea
                   rows={4}
                   required
@@ -316,22 +354,34 @@ export default function ServicesPage() {
                 />
               </div>
 
-              {/* Pricing & Platform Commission Breakdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Budget (₹)</label>
+                <input
+                  type="number"
+                  required
+                  min={500}
+                  value={projectBudget}
+                  onChange={(e) => setProjectBudget(Number(e.target.value))}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* Pricing Breakdown */}
               <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
                 <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span>Project Price:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">₹{hireModalFreelancer.startingPrice.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">₹{projectBudget.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span>SocialFlow Platform Fee (15%):</span>
                   <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                    ₹{Math.round(hireModalFreelancer.startingPrice * 0.15).toLocaleString()}
+                    ₹{Math.round(projectBudget * 0.15).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-800">
                   <span>Freelancer Net Earnings:</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    ₹{Math.round(hireModalFreelancer.startingPrice * 0.85).toLocaleString()}
+                    ₹{Math.round(projectBudget * 0.85).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
@@ -346,9 +396,10 @@ export default function ServicesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/25 hover:opacity-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/25 hover:opacity-95 transition-all disabled:opacity-60"
                 >
-                  Submit Order &amp; Start Project
+                  {isSubmitting ? 'Sending Request...' : 'Submit Order & Start Project'}
                 </button>
               </div>
             </form>

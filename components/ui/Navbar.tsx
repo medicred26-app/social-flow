@@ -15,7 +15,8 @@ import {
   LogOut,
   User as UserIcon,
   LogIn,
-  Key
+  Key,
+  ShieldCheck
 } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useAuth } from '@/lib/auth-context';
@@ -91,6 +92,16 @@ export function Navbar() {
           )}
         </button>
 
+        {/* Admin Portal Header Button */}
+        <Link
+          href="/admin"
+          title="Access Admin Portal"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 rounded-xl text-xs font-bold transition-all shadow-sm transform hover:scale-105"
+        >
+          <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="hidden sm:inline">Admin Portal</span>
+        </Link>
+
         {/* Notifications */}
         <div className="relative">
           <button 
@@ -161,6 +172,14 @@ export function Navbar() {
                 </div>
 
                 <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 space-y-1">
+                  <Link
+                    href="/admin"
+                    onClick={() => setShowProfileMenu(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Admin Portal</span>
+                  </Link>
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);

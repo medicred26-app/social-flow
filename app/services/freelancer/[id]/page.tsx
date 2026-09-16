@@ -170,13 +170,34 @@ export default function FreelancerPublicProfilePage({ params }: { params: Promis
             </div>
           </div>
 
-          <button
-            onClick={() => setIsHireModalOpen(true)}
-            className="w-full md:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all hover:scale-105 cursor-pointer flex items-center justify-center gap-2"
-          >
-            <Send className="w-4 h-4" />
-            <span>Hire / Request Job</span>
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <button
+              onClick={() => {
+                if (!freelancer) return;
+                window.dispatchEvent(new CustomEvent('socialflow_open_chat', {
+                  detail: {
+                    participant: {
+                      id: freelancer.user_id || freelancer.id,
+                      name: freelancer.user_name || freelancer.professional_title,
+                      avatar: freelancer.user_avatar
+                    }
+                  }
+                }));
+              }}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-300 dark:border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4 text-indigo-500" />
+              <span>Message</span>
+            </button>
+
+            <button
+              onClick={() => setIsHireModalOpen(true)}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all hover:scale-105 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Hire / Request Job</span>
+            </button>
+          </div>
         </div>
 
         {/* Bio */}

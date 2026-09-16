@@ -125,7 +125,17 @@ export default function BecomeFreelancerPage() {
 
     if (res.success && res.profile) {
       setMyProfile(res.profile);
-      setSuccessMessage('Application submitted successfully! Your profile is currently under admin verification.');
+      setSuccessMessage('🎉 Your Freelancer Profile is now active! Redirecting to your Freelancer Dashboard...');
+      
+      // Update session role to freelancer
+      if (user) {
+        const updatedUser = { ...user, role: 'freelancer' as const };
+        localStorage.setItem('sf_auth_user', JSON.stringify(updatedUser));
+      }
+      
+      setTimeout(() => {
+        router.push('/freelancer');
+      }, 1200);
     } else {
       setErrorMessage(res.error || 'Failed to submit application.');
     }

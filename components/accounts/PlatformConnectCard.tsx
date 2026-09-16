@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { SocialAccount, SocialPlatform } from '@/types';
 import { PLATFORM_CONFIGS } from '@/lib/constants';
-import { startPlatformOAuth } from '@/lib/backend';
 import { 
   CheckCircle2, 
   ShieldCheck, 
@@ -37,7 +36,8 @@ export function PlatformConnectCard({
   const handleConnectClick = () => {
     if (!account.connected) {
       setIsConnecting(true);
-      startPlatformOAuth(account.platform);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      window.location.href = `${backendUrl}/api/platforms/${account.platform}/oauth`;
       return;
     }
 

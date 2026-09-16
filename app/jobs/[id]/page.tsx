@@ -126,9 +126,38 @@ export default function JobWorkspacePage({ params }: { params: Promise<{ id: str
             </h1>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-right">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total Job Budget</span>
-            <span className="text-xl font-extrabold text-slate-900 dark:text-white">₹{Number(job.budget).toLocaleString('en-IN')}</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const otherId = isClient
+                  ? (job.freelancer_user_id || job.freelancer_id || 'freelancer')
+                  : job.client_id;
+                const otherName = isClient ? (job.freelancer_name || 'Freelancer') : (job.client_name || 'Client');
+                const otherAvatar = isClient ? job.freelancer_avatar : undefined;
+
+                window.dispatchEvent(
+                  new CustomEvent('socialflow_open_chat', {
+                    detail: {
+                      participant: {
+                        id: otherId,
+                        name: otherName,
+                        avatar: otherAvatar
+                      },
+                      jobId: job.id
+                    }
+                  })
+                );
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{isClient ? 'Chat with Freelancer' : 'Chat with Client'}</span>
+            </button>
+
+            <div className="p-3.5 px-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-right">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total Job Budget</span>
+              <span className="text-xl font-extrabold text-slate-900 dark:text-white">₹{Number(job.budget).toLocaleString('en-IN')}</span>
+            </div>
           </div>
         </div>
 

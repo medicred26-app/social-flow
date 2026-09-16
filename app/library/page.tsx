@@ -9,17 +9,12 @@ import {
   UserPlus, 
   Trash2, 
   Copy, 
-  Download, 
-  Sparkles, 
-  Video, 
-  Image as ImageIcon, 
-  FileText, 
+  RefreshCw, 
+  Archive,
   CheckCircle2, 
-  Clock, 
-  Plus, 
-  ExternalLink,
   Search,
-  Filter
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { ContentItem } from '@/types';
 import { getStoredLibraryItems, saveStoredLibraryItems } from '@/lib/store';
@@ -56,6 +51,41 @@ export default function ContentLibraryPage() {
     saveStoredLibraryItems(updated);
     setNotif('Content item duplicated successfully!');
     setTimeout(() => setNotif(null), 2500);
+  };
+
+  const handleArchiveItem = (item: ContentItem) => {
+    const updated = items.map(i => i.id === item.id ? { ...i, status: 'draft' as const } : i);
+    setItems(updated);
+    saveStoredLibraryItems(updated);
+    setNotif(`Archived "${item.title}".`);
+    setTimeout(() => setNotif(null), 2500);
+  };
+
+  const handleRepurposeItem = (item: ContentItem) => {
+    // PDF Section 9 specs: Never modify original when creating repurposed version
+    const repurposedCopy: ContentItem = {
+      ...item,
+      id: `lib-repurposed-${Date.now()}`,
+      title: `⚡ Repurposed Package: ${item.title}`,
+      creationSource: 'ai_generated',
+      contentType: 'repurposed_package',
+      status: 'ready',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      platformVariants: [
+        { platform: 'instagram', caption: `📱 Instagram Reel Edition:\n${item.caption}`, hashtags: ['#ReelsViral', '#Shorts'] },
+        { platform: 'youtube', caption: `▶️ YouTube Shorts Edition:\n${item.caption}`, hashtags: ['#Shorts', '#Tutorial'] },
+        { platform: 'linkedin', caption: `💼 LinkedIn Article Edition:\n${item.caption}`, hashtags: ['#Leadership', '#Innovation'] },
+        { platform: 'x', caption: `🐦 X Tweet Edition:\n${item.caption.slice(0, 240)}`, hashtags: ['#Tech', '#SaaS'] },
+        { platform: 'facebook', caption: `👥 Facebook Watch Edition:\n${item.caption}`, hashtags: ['#Watch', '#Video'] }
+      ]
+    };
+
+    const updated = [repurposedCopy, ...items];
+    setItems(updated);
+    saveStoredLibraryItems(updated);
+    setNotif('✨ Created 5 platform-tailored versions without altering original content!');
+    setTimeout(() => setNotif(null), 3000);
   };
 
   const handleSendToPublisher = (item: ContentItem) => {
@@ -103,7 +133,7 @@ export default function ContentLibraryPage() {
               Content Library
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Central repository connecting AI Content Studio, Freelancer Services, and Multi-Channel Publishing
+              Central repository connecting AI Content Studio, Freelancer Services, Repurposing &amp; Multi-Channel Publishing
             </p>
           </div>
         </div>
@@ -118,7 +148,7 @@ export default function ContentLibraryPage() {
       </div>
 
       {notif && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-2xl flex items-center gap-2">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-2xl flex items-center gap-2 shadow-sm">
           <CheckCircle2 className="w-4 h-4" />
           <span>{notif}</span>
         </div>
@@ -136,9 +166,9 @@ export default function ContentLibraryPage() {
             <button
               key={tab.id}
               onClick={() => setFilterSource(tab.id)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 filterSource === tab.id
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -182,7 +212,7 @@ export default function ContentLibraryPage() {
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all flex flex-col justify-between group"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all flex flex-col justify-between group interactive-card"
             >
               <div>
                 {/* Thumbnail / Media Header */}
@@ -194,7 +224,7 @@ export default function ContentLibraryPage() {
                   />
                   
                   {/* Badges */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
                     <span className="px-2.5 py-1 bg-slate-900/80 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider border border-slate-700">
                       {item.contentType}
                     </span>
@@ -219,6 +249,13 @@ export default function ContentLibraryPage() {
                     {item.caption}
                   </p>
 
+                  {item.platformVariants && item.platformVariants.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>{item.platformVariants.length} Platform-Adapted Variants Ready</span>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-1 pt-1">
                     {item.hashtags.map((tag, idx) => (
                       <span key={idx} className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md">
@@ -229,46 +266,59 @@ export default function ContentLibraryPage() {
                 </div>
               </div>
 
-              {/* Action Footer Controls */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
+              {/* Action Controls Footer */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleRepurposeItem(item)}
+                      title="Repurpose into 5 platform versions (Section 9 Specs)"
+                      className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4 text-emerald-500" />
+                    </button>
+
+                    <button
+                      onClick={() => handleHireForAsset(item)}
+                      title="Work with a Professional Video Editor"
+                      className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <UserPlus className="w-4 h-4 text-purple-500" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDuplicateItem(item)}
+                      title="Duplicate Asset"
+                      className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleArchiveItem(item)}
+                      title="Archive Asset"
+                      className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                    >
+                      <Archive className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteItem(item.id)}
+                      title="Delete Asset"
+                      className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => router.push(`/content-studio?id=${item.id}`)}
-                    title="Open in Content Studio"
-                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    onClick={() => handleSendToPublisher(item)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
                   >
-                    <Wand2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleHireForAsset(item)}
-                    title="Hire Someone to Improve This"
-                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDuplicateItem(item)}
-                    title="Duplicate Item"
-                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    title="Delete Item"
-                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Publish</span>
                   </button>
                 </div>
-
-                <button
-                  onClick={() => handleSendToPublisher(item)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Publish</span>
-                </button>
               </div>
             </div>
           ))}

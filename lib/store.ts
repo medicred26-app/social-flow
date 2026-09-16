@@ -335,3 +335,94 @@ export function saveStoredClientProjects(projects: Project[]) {
   } catch (e) {}
 }
 
+// BRAND KIT STORE
+import { BrandKit } from '@/types';
+
+const STORAGE_KEY_BRAND_KIT = 'socialflow_brand_kit_v1';
+
+export const DEFAULT_BRAND_KIT: BrandKit = {
+  brandName: 'SocialFlow Technologies',
+  logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
+  primaryColor: '#6366F1', // Indigo 500
+  secondaryColor: '#A855F7', // Purple 500
+  accentColor: '#EC4899', // Pink 500
+  fontFamily: 'Inter, sans-serif',
+  brandVoice: 'Energetic, Visionary, Professional & Action-Oriented',
+  targetAudience: 'SaaS Founders, Digital Marketers, Video Creators & Social Media Managers (22-45)',
+  preferredCTA: '🚀 Comment AUTOMATE below to get instant VIP access to SocialFlow!',
+  keywords: ['SocialMediaAutomation', 'AIContentStudio', 'BuildInPublic', 'GrowthHacking', 'SaaS2026'],
+  description: 'SocialFlow is the all-in-one AI content creation, editing, multi-platform publishing, and analytics platform.'
+};
+
+export function getStoredBrandKit(): BrandKit {
+  if (typeof window === 'undefined') return DEFAULT_BRAND_KIT;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_BRAND_KIT);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_BRAND_KIT, JSON.stringify(DEFAULT_BRAND_KIT));
+      return DEFAULT_BRAND_KIT;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    return DEFAULT_BRAND_KIT;
+  }
+}
+
+export function saveStoredBrandKit(kit: BrandKit) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY_BRAND_KIT, JSON.stringify(kit));
+  } catch (e) {}
+}
+
+// TEMPLATES
+export interface SocialTemplate {
+  id: string;
+  name: string;
+  category: 'product_launch' | 'educational' | 'behind_the_scenes' | 'event_promo' | 'testimonial';
+  description: string;
+  suggestedCaption: string;
+  hashtags: string[];
+  aspectRatio: '9:16' | '16:9' | '1:1';
+}
+
+export const INITIAL_TEMPLATES: SocialTemplate[] = [
+  {
+    id: 'tpl-1',
+    name: '🚀 Product Launch Announcement',
+    category: 'product_launch',
+    description: 'High-converting template for showcasing new features, updates, or app releases.',
+    suggestedCaption: '🎉 Big news! We are thrilled to launch our newest feature update. Here is a quick 15-second walkthrough of what is new and how it will supercharge your workflow.',
+    hashtags: ['#ProductLaunch', '#SaaS', '#FeatureUpdate', '#BuildInPublic'],
+    aspectRatio: '9:16'
+  },
+  {
+    id: 'tpl-2',
+    name: '💡 5 Actionable Tips Carousel',
+    category: 'educational',
+    description: 'Structure your knowledge into clear slide-by-slide value points.',
+    suggestedCaption: 'Stop making these common mistakes! Here are 5 proven strategies top creators use in 2026 to scale their audience. Swipe to read all 5 →',
+    hashtags: ['#CreatorTips', '#GrowthStrategy', '#SocialMediaMarketing', '#Productivity'],
+    aspectRatio: '1:1'
+  },
+  {
+    id: 'tpl-3',
+    name: '🍿 Behind-The-Scenes Walkthrough',
+    category: 'behind_the_scenes',
+    description: 'Authentic casual video clip demonstrating your workflow or team culture.',
+    suggestedCaption: 'Ever wondered what happens behind the scenes? Take an insider look at how we build and deploy new updates every week.',
+    hashtags: ['#BehindTheScenes', '#FounderLife', '#TechStartup', '#StartupCulture'],
+    aspectRatio: '9:16'
+  },
+  {
+    id: 'tpl-4',
+    name: '🌟 Customer Success Spotlight',
+    category: 'testimonial',
+    description: 'Highlight customer wins, quotes, case studies, and social proof.',
+    suggestedCaption: 'See how our client boosted their social reach by 340% in under 30 days using automated multi-platform publishing!',
+    hashtags: ['#CustomerSpotlight', '#CaseStudy', '#SocialProof', '#Results'],
+    aspectRatio: '16:9'
+  }
+];
+
+

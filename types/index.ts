@@ -1,6 +1,6 @@
 export type SocialPlatform = 'facebook' | 'instagram' | 'youtube' | 'linkedin' | 'x';
 
-export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed';
+export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'partially_failed' | 'failed';
 
 export interface SocialAccount {
   id: string;
@@ -175,4 +175,74 @@ export interface Project {
 export interface CommissionConfig {
   percentage: number; // e.g. 15 for 15%
 }
+
+export interface BrandKit {
+  brandName: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+  brandVoice: string; // e.g., 'Energetic & Professional'
+  targetAudience: string; // e.g., 'Tech Founders & Content Creators (22-45)'
+  preferredCTA: string; // e.g., 'Comment AUTOMATE below!'
+  keywords: string[];
+  description: string;
+}
+
+export interface VideoScriptScene {
+  sceneNumber: number;
+  durationSeconds: number;
+  narration: string;
+  onScreenText: string;
+  visualDescription: string;
+}
+
+export interface AIVideoCreationRequest {
+  topic: string;
+  targetAudience: string;
+  language: string;
+  tone: string;
+  videoLengthSeconds: number;
+  keyPoints: string[];
+  voiceOver: string;
+  backgroundMusic: string;
+  musicVolume: number; // 0-100
+  scenes: VideoScriptScene[];
+  aspectRatio: '9:16' | '16:9' | '1:1';
+}
+
+export interface PostConfiguration {
+  privacy: 'public' | 'private' | 'unlisted';
+  audienceVisibility: 'all' | 'subscribers' | 'targeted';
+  allowComments: boolean;
+  allowDownloads: boolean;
+  youtubePlaylist?: string;
+  category?: string;
+  usagePermissionConfirmed: boolean;
+}
+
+export interface UploadMetadata {
+  title: string;
+  category: string;
+  description: string;
+  tags: string[];
+  language: string;
+  contentType: 'video' | 'image' | 'ppt' | 'pdf';
+  file?: File;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+}
+
+export type CreateStartType = 
+  | 'post'
+  | 'reel'
+  | 'image'
+  | 'document'
+  | 'link'
+  | 'upload'
+  | 'ai_video'
+  | 'template'
+  | 'repurpose';
+
 
