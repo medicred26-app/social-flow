@@ -29,10 +29,10 @@ export async function generateAiVideo(
     throw new Error(started.error || 'Video job did not start.');
   }
 
-  const deadline = Date.now() + 240000;
+  const deadline = Date.now() + 90000;
   while (Date.now() < deadline) {
     onStatus?.(started.message || started.status || 'queued', started);
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     const job = await parseAi(
       await fetch(`${getBackendUrl()}/api/ai/video/jobs/${started.jobId}`, { cache: 'no-store' })
     );

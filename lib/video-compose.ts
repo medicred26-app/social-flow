@@ -12,13 +12,13 @@ function sleep(ms: number) {
 }
 
 function canvasSize(aspectRatio: string) {
-  if (aspectRatio === '16:9') return { width: 1280, height: 720 };
-  if (aspectRatio === '1:1') return { width: 720, height: 720 };
-  return { width: 720, height: 1280 };
+  if (aspectRatio === '16:9') return { width: 960, height: 540 };
+  if (aspectRatio === '1:1') return { width: 540, height: 540 };
+  return { width: 540, height: 960 };
 }
 
 function pickRecorderType() {
-  const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+  const types = ['video/webm;codecs=vp8', 'video/webm', 'video/webm;codecs=vp9', 'video/mp4'];
   return types.find((type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) || '';
 }
 
@@ -36,7 +36,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     }
   }
   if (current) lines.push(current);
-  return lines.slice(0, 5);
+  return lines.slice(0, 4);
 }
 
 function loadImage(src: string) {
@@ -50,23 +50,6 @@ function loadImage(src: string) {
   });
 }
 
-async function attachVoiceover(stream: MediaStream, audioUrl?: string) {
-  if (!audioUrl || typeof AudioContext === 'undefined') return;
-  try {
-    const audio = new Audio(audioUrl);
-    audio.crossOrigin = 'anonymous';
-    await audio.play().catch(() => undefined);
-    const context = new AudioContext();
-    const source = context.createMediaElementSource(audio);
-    const dest = context.createMediaStreamDestination();
-    source.connect(dest);
-    source.connect(context.destination);
-    dest.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
-  } catch {
-    // Captions still play if the browser blocks mixed audio.
-  }
-}
-
 export async function composeMotionVideo(options: {
   title: string;
   scenes: StoryboardScene[];
@@ -77,7 +60,7 @@ export async function composeMotionVideo(options: {
 }) {
   const scenes = (options.scenes || []).filter((scene) => scene.heading || scene.line || scene.visual);
   const fallback: StoryboardScene[] = scenes.length
-    ? scenes
+    ? scenes.slice(0, 4)
     : [
         { heading: 'HOOK', line: options.title, color: '#4f46e5' },
         { heading: 'STORY', line: 'AI turned your script into a timed reel.', color: '#7c3aed' },
@@ -92,31 +75,30 @@ export async function composeMotionVideo(options: {
   if (!ctx) throw new Error('Could not create a video canvas in this browser.');
 
   const images = await Promise.all(fallback.map((scene) => loadImage(scene.imageUrl || '')));
-  const stream = canvas.captureStream(30);
-  await attachVoiceover(stream, options.audioUrl);
+  const stream = canvas.captureStream(15);
   const mimeType = pickRecorderType();
   if (!mimeType) throw new Error('This browser cannot record a video reel. Try Chrome or Edge.');
 
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 3_500_000 });
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_200_000 });
   const chunks: Blob[] = [];
   recorder.ondataavailable = (event) => {
     if (event.data.size) chunks.push(event.data);
   };
 
-  const seconds = Math.min(30, Math.max(6, Number(options.durationSeconds) || 12));
+  const seconds = Math.min(8, Math.max(4, Number(options.durationSeconds) || 8));
   const msPerScene = (seconds * 1000) / fallback.length;
   const stopped = new Promise<void>((resolve) => {
     recorder.onstop = () => resolve();
   });
-  recorder.start(200);
+  recorder.start(250);
 
   for (const [sceneIndex, scene] of fallback.entries()) {
     const color = scene.color || '#4f46e5';
     const still = images[sceneIndex];
-    const frames = Math.max(18, Math.round(msPerScene / 32));
+    const frames = Math.max(8, Math.round(msPerScene / 80));
     for (let i = 0; i < frames; i += 1) {
       const progress = i / frames;
-      const zoom = 1 + progress * 0.08;
+      const zoom = 1 + progress * 0.06;
       ctx.fillStyle = '#020617';
       ctx.fillRect(0, 0, width, height);
 
@@ -137,21 +119,21 @@ export async function composeMotionVideo(options: {
       }
       ctx.restore();
 
-      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
       ctx.font = `700 ${Math.round(width * 0.045)}px sans-serif`;
       ctx.fillText(scene.heading || 'SCENE', width * 0.08, height * 0.2);
 
-      ctx.font = `800 ${Math.round(width * 0.064)}px sans-serif`;
+      ctx.font = `800 ${Math.round(width * 0.06)}px sans-serif`;
       const lines = wrapText(ctx, scene.line || scene.visual || options.title, width * 0.84);
       lines.forEach((line, index) => {
-        ctx.fillText(line, width * 0.08, height * 0.34 + index * width * 0.085);
+        ctx.fillText(line, width * 0.08, height * 0.34 + index * width * 0.08);
       });
 
       ctx.globalAlpha = 0.75;
       ctx.font = `600 ${Math.round(width * 0.03)}px sans-serif`;
       ctx.fillText(options.brandName || 'SocialFlow AI Reel', width * 0.08, height * 0.9);
       ctx.globalAlpha = 1;
-      await sleep(32);
+      await sleep(80);
     }
   }
 

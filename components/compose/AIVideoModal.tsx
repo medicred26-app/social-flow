@@ -185,23 +185,26 @@ export function AIVideoModal({ isOpen, onClose, onApplyVideo }: AIVideoModalProp
       if (data.mediaType === 'video' && remoteVideo && isPlayableVideoUrl(remoteVideo)) {
         setRenderedVideoUrl(remoteVideo);
       } else {
-        const composed = await composeMotionVideo({
-          title: data.storyboard?.title || videoTitle || topic,
-          scenes: data.storyboard?.scenes || scenes.map((scene) => ({
-            heading: scene.onScreenText,
-            line: scene.narration,
-            visual: scene.visualDescription,
-          })),
-          aspectRatio,
-          durationSeconds: Number(data.durationSeconds) || videoLengthSeconds,
-          brandName: brandKit?.brandName || 'SocialFlow',
-          audioUrl: resolve(data.audioUrl),
-        });
-        setRenderedVideoUrl(composed);
+        try {
+          const composed = await composeMotionVideo({
+            title: data.storyboard?.title || videoTitle || topic,
+            scenes: data.storyboard?.scenes || scenes.map((scene) => ({
+              heading: scene.onScreenText,
+              line: scene.narration,
+              visual: scene.visualDescription,
+            })),
+            aspectRatio,
+            durationSeconds: 8,
+            brandName: brandKit?.brandName || 'SocialFlow',
+            audioUrl: resolve(data.audioUrl),
+          });
+          setRenderedVideoUrl(composed);
+        } catch (composeErr) {
+          console.warn('Motion compose failed', composeErr);
+        }
       }
       setStep('preview');
     } catch (err: any) {
-      setRenderedVideoUrl('');
       alert(err.message || 'Video pipeline failed.');
     } finally {
       setIsGeneratingVideo(false);

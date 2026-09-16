@@ -125,18 +125,22 @@ export default function ContentStudioPage() {
       if (data.mediaType === 'video' && isPlayableVideoUrl(remoteVideo)) {
         setVideoUrl(remoteVideo);
       } else {
-        const composed = await composeMotionVideo({
-          title: data.storyboard?.title || mediaTitle,
-          scenes,
-          aspectRatio,
-          durationSeconds: Number(data.durationSeconds) || durationSeconds,
-          brandName,
-          audioUrl,
-        });
-        setVideoUrl(composed);
+        try {
+          const composed = await composeMotionVideo({
+            title: data.storyboard?.title || mediaTitle,
+            scenes,
+            aspectRatio,
+            durationSeconds: 8,
+            brandName,
+            audioUrl,
+          });
+          setVideoUrl(composed);
+        } catch (composeErr) {
+          console.warn('Motion compose failed, using live storyboard preview', composeErr);
+        }
       }
       setReviewReady(true);
-      setNotif(data.message || 'Pipeline finished. Review the reel, then send it to Publisher.');
+      setNotif(data.message || 'Preview is ready. Play it, then send it to Publisher.');
     } catch (err: any) {
       setNotif(err.message || 'Video generation failed.');
     } finally {
