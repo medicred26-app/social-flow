@@ -14,10 +14,12 @@ import {
   CheckCircle2, 
   Search,
   Sparkles,
-  Layers
+  Layers,
+  HardDrive
 } from 'lucide-react';
 import { ContentItem } from '@/types';
 import { getStoredLibraryItems, saveStoredLibraryItems } from '@/lib/store';
+import { mergeDriveVideos, pointerToLibraryItem } from '@/lib/drive';
 
 export default function ContentLibraryPage() {
   const router = useRouter();
@@ -25,6 +27,8 @@ export default function ContentLibraryPage() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notif, setNotif] = useState<string | null>(null);
+  const [selectedDriveIds, setSelectedDriveIds] = useState<string[]>([]);
+  const [merging, setMerging] = useState(false);
 
   useEffect(() => {
     setItems(getStoredLibraryItems());
@@ -102,6 +106,38 @@ export default function ContentLibraryPage() {
     router.push('/compose?fromLibrary=true');
   };
 
+  const toggleDriveSelect = (item: ContentItem) => {
+    const fileId = item.media[0]?.driveFileId;
+    if (!fileId) return;
+    setSelectedDriveIds((current) =>
+      current.includes(fileId) ? current.filter((id) => id !== fileId) : [...current, fileId]
+    );
+  };
+
+  const handleMergeSelected = async () => {
+    if (selectedDriveIds.length < 2) {
+      setNotif('Select at least two Drive clips to merge.');
+      setTimeout(() => setNotif(null), 2500);
+      return;
+    }
+    setMerging(true);
+    try {
+      const data = await mergeDriveVideos(selectedDriveIds, 'Library merged clips');
+      if (data.item) {
+        const current = getStoredLibraryItems();
+        saveStoredLibraryItems([pointerToLibraryItem(data.item), ...current]);
+        setItems(getStoredLibraryItems());
+        setSelectedDriveIds([]);
+      }
+      setNotif(data.message || 'Merged Drive clips. The longer video is in your Drive.');
+    } catch (err: any) {
+      setNotif(err.message || 'Merge failed.');
+    } finally {
+      setMerging(false);
+      setTimeout(() => setNotif(null), 5000);
+    }
+  };
+
   const handleHireForAsset = (item: ContentItem) => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('socialflow_hire_context', JSON.stringify({
@@ -138,13 +174,30 @@ export default function ContentLibraryPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => router.push('/content-studio')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"
-        >
-          <Wand2 className="w-4 h-4" />
-          <span>Create New in Studio</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push('/drive')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 rounded-xl text-xs font-bold"
+          >
+            <HardDrive className="w-4 h-4" />
+            Import from Drive
+          </button>
+          <button
+            onClick={handleMergeSelected}
+            disabled={merging || selectedDriveIds.length < 2}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold"
+          >
+            <Layers className="w-4 h-4" />
+            {merging ? 'Merging…' : `Merge ${selectedDriveIds.length} clips`}
+          </button>
+          <button
+            onClick={() => router.push('/content-studio')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"
+          >
+            <Wand2 className="w-4 h-4" />
+            <span>Create New in Studio</span>
+          </button>
+        </div>
       </div>
 
       {notif && (
@@ -161,7 +214,8 @@ export default function ContentLibraryPage() {
             { id: 'all', label: 'All Content' },
             { id: 'ai_generated', label: '🤖 AI Created' },
             { id: 'freelancer_delivered', label: '👥 Freelancer Work' },
-            { id: 'user_upload', label: '📤 Uploads' }
+            { id: 'user_upload', label: '📤 Uploads' },
+            { id: 'google_drive', label: 'Drive pointers' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -225,6 +279,22 @@ export default function ContentLibraryPage() {
                   
                   {/* Badges */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                    {item.media[0]?.driveFileId && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleDriveSelect(item);
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          selectedDriveIds.includes(item.media[0].driveFileId)
+                            ? 'bg-indigo-600 text-white border-indigo-400'
+                            : 'bg-slate-900/80 text-white border-slate-700'
+                        }`}
+                      >
+                        {selectedDriveIds.includes(item.media[0].driveFileId) ? 'Selected' : 'Select to merge'}
+                      </button>
+                    )}
                     <span className="px-2.5 py-1 bg-slate-900/80 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider border border-slate-700">
                       {item.contentType}
                     </span>

@@ -14,8 +14,11 @@ import {
   ShieldCheck, 
   Sparkles,
   X,
-  Radio
+  Radio,
+  HardDrive
 } from 'lucide-react';
+import { startPlatformOAuth } from '@/lib/backend';
+import { DriveStatus, disconnectDrive, fetchDriveStatus } from '@/lib/drive';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
@@ -29,6 +32,7 @@ export default function AccountsPage() {
   const [followerCountInput, setFollowerCountInput] = useState('12500');
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [driveStatus, setDriveStatus] = useState<DriveStatus | null>(null);
 
   useEffect(() => {
     const loadedAccounts = getStoredAccounts();
@@ -39,6 +43,7 @@ export default function AccountsPage() {
       const isFbConnected = urlParams.get('facebook_connected') === 'true';
       const isIgConnected = urlParams.get('instagram_connected') === 'true';
       const isYtConnected = urlParams.get('youtube_connected') === 'true';
+      const isDriveConnected = urlParams.get('drive_connected') === 'true';
       const oauthError = urlParams.get('error');
 
       if (oauthError) {
@@ -170,10 +175,14 @@ export default function AccountsPage() {
         setNotification({ type: 'success', message: `Successfully connected YouTube channel "${name}"!` });
         window.history.replaceState({}, '', window.location.pathname);
         return;
+      } else if (isDriveConnected) {
+        setNotification({ type: 'success', message: `Connected Google Drive for ${urlParams.get('name') || 'your account'}. Videos stay in Drive.` });
+        window.history.replaceState({}, '', window.location.pathname);
       }
     }
 
     setAccounts(loadedAccounts);
+    fetchDriveStatus().then(setDriveStatus).catch(() => setDriveStatus({ success: false, connected: false, storedVideos: false }));
   }, []);
 
   const handleToggleConnect = (id: string) => {
@@ -353,6 +362,56 @@ export default function AccountsPage() {
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
           <span>OAuth tokens are encrypted at rest</span>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-sky-600 text-white flex items-center justify-center">
+            <HardDrive className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Google Drive (pointer mode)</h3>
+            <p className="text-xs text-slate-500">
+              {driveStatus?.connected
+                ? `Connected as ${driveStatus.account?.email || driveStatus.account?.name || 'Google'}. Videos are not copied.`
+                : 'Connect Drive to import video addresses and merge 30s clips.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/drive'; }}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800"
+          >
+            Open Drive videos
+          </button>
+          {driveStatus?.connected ? (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await disconnectDrive();
+                  setDriveStatus({ success: true, connected: false, storedVideos: false, account: null });
+                  setNotification({ type: 'success', message: 'Disconnected Google Drive.' });
+                } catch (err: any) {
+                  setNotification({ type: 'error', message: err.message || 'Could not disconnect Drive.' });
+                }
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600"
+            >
+              Disconnect Drive
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => startPlatformOAuth('drive')}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white"
+            >
+              Connect Google Drive
+            </button>
+          )}
         </div>
       </div>
 

@@ -20,6 +20,8 @@ export interface MediaItem {
   type: 'image' | 'video';
   name: string;
   size?: string;
+  driveFileId?: string;
+  stored?: boolean;
 }
 
 export interface PostTarget {
@@ -67,7 +69,7 @@ export interface EngagementMetric {
   shares: number;
 }
 
-export type ContentSource = 'ai_generated' | 'user_upload' | 'edited' | 'freelancer_delivered';
+export type ContentSource = 'ai_generated' | 'user_upload' | 'edited' | 'freelancer_delivered' | 'google_drive';
 export type ContentType = 'video' | 'image' | 'text' | 'repurposed_package';
 
 export interface PlatformVariant {

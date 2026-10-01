@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/backend';
 
-const PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'x', 'linkedin']);
+const PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'x', 'linkedin', 'drive']);
 
 export async function GET(request: NextRequest) {
   const platform = (request.nextUrl.searchParams.get('platform') || '').toLowerCase();

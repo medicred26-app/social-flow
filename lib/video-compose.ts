@@ -151,6 +151,7 @@ export function isPlayableVideoUrl(url?: string) {
     url.startsWith('blob:') ||
     url.startsWith('data:video') ||
     /\/api\/ai\/media\//.test(url) ||
+    /\/api\/platforms\/drive\/files\//.test(url) ||
     /\.(mp4|webm|mov)(\?|$)/i.test(url)
   );
 }
