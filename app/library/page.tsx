@@ -180,7 +180,7 @@ export default function ContentLibraryPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 rounded-xl text-xs font-bold"
           >
             <HardDrive className="w-4 h-4" />
-            Import from Drive
+            Videos: Drive / key / upload
           </button>
           <button
             onClick={handleMergeSelected}

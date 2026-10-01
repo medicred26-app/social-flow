@@ -276,7 +276,7 @@ export default function ContentStudioPage() {
             className="flex items-center gap-1.5 px-4 py-2.5 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/30 text-sky-700 dark:text-sky-300 rounded-xl text-xs font-semibold"
           >
             <HardDrive className="w-4 h-4" />
-            <span>Drive & merge</span>
+            <span>3 video methods</span>
           </button>
 
           <button

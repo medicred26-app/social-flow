@@ -1,7 +1,7 @@
 'use client';
 
-import { DriveWorkspace } from '@/components/drive/DriveWorkspace';
+import { VideoMethodsPage } from '@/components/videos/VideoMethodsPage';
 
 export default function DrivePage() {
-  return <DriveWorkspace />;
+  return <VideoMethodsPage />;
 }

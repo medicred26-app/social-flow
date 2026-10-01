@@ -39,7 +39,7 @@ const CUSTOMER_NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
   { name: 'Content Studio', href: '/content-studio', icon: Wand2, badge: 'AI' },
   { name: 'Content Library', href: '/library', icon: FolderKanban },
-  { name: 'Drive Videos', href: '/drive', icon: HardDrive },
+  { name: 'Videos', href: '/drive', icon: HardDrive },
   { name: 'Publish', href: '/compose', icon: PenSquare },
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Hire Freelancers', href: '/services', icon: Briefcase },
